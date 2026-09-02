@@ -128,7 +128,15 @@ public class DatabaseInitializer
             connection.Execute(insertAdminSql, new { Hash = adminHash, CreatedAt = DateTime.UtcNow.ToString("o") });
         }
 
-        // 'batu', 'batuhan' ve 'admin' kullanıcılarını Admin yap
-        connection.Execute("UPDATE Users SET IsAdmin = 1 WHERE Username IN ('admin', 'batu', 'batuhan') OR Id = 1;");
+        // 'batu' kullanıcısının yetkisini kaldır
+        connection.Execute("UPDATE Users SET IsAdmin = 0 WHERE Username = 'batu';");
+
+        // 'Batuhan İnan' ve 'admin' kullanıcılarını Admin yap
+        connection.Execute(@"
+            UPDATE Users 
+            SET IsAdmin = 1, FullName = 'Batuhan İnan' 
+            WHERE Username IN ('batuhan', 'batuhaninan') OR Id = 1;
+        ");
+        connection.Execute("UPDATE Users SET IsAdmin = 1 WHERE Username = 'admin';");
     }
 }
