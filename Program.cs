@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using System.Security.Claims;
 using GardiropApp.Data;
 using GardiropApp.Models;
@@ -16,8 +17,15 @@ if (!string.IsNullOrEmpty(port))
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 }
 
+
 // Veritabanı ve Repository bağımlılıklarını ekle
-builder.Services.AddSingleton<DbConnectionFactory>();
+var dbFactory = new DbConnectionFactory(builder.Configuration);
+builder.Services.AddSingleton(dbFactory);
+var xmlRepo = new DbXmlRepository(dbFactory);
+builder.Services.AddSingleton<Microsoft.AspNetCore.DataProtection.Repositories.IXmlRepository>(xmlRepo);
+builder.Services.AddDataProtection()
+    .SetApplicationName("GardiropApp")
+    .AddKeyManagementOptions(o => o.XmlRepository = xmlRepo);
 builder.Services.AddSingleton<DatabaseInitializer>();
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<CategoryRepository>();
