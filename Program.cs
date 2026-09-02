@@ -23,6 +23,7 @@ builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<CategoryRepository>();
 builder.Services.AddScoped<ClothingRepository>();
 builder.Services.AddScoped<OutfitRepository>();
+builder.Services.AddSingleton<CloudinaryService>();
 
 // Çerez (Cookie) tabanlı kimlik doğrulama
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -336,7 +337,7 @@ clothingGroup.MapPost("/{id:int}/worn", async (int id, ClothingRepository repo, 
 });
 
 // Dosya / Fotoğraf Yükleme Uç Noktası (Mobil kamera & galeriden gelen görseller)
-clothingGroup.MapPost("/upload", async (IFormFile file, IWebHostEnvironment env) =>
+clothingGroup.MapPost("/upload", async (IFormFile file, IWebHostEnvironment env, CloudinaryService cloudinaryService) =>
 {
     if (file == null || file.Length == 0)
         return Results.BadRequest(new { message = "Lütfen geçerli bir görsel dosyası seçin." });
@@ -350,6 +351,17 @@ clothingGroup.MapPost("/upload", async (IFormFile file, IWebHostEnvironment env)
     if (!allowedExtensions.Contains(ext))
         return Results.BadRequest(new { message = "Yalnızca JPG, PNG, WEBP ve GIF formatları desteklenmektedir." });
 
+    // 1. Cloudinary yapılandırılmışsa doğrudan buluta yükle
+    if (cloudinaryService.IsConfigured)
+    {
+        var cloudUrl = await cloudinaryService.UploadAsync(file);
+        if (!string.IsNullOrEmpty(cloudUrl))
+        {
+            return Results.Ok(new { url = cloudUrl });
+        }
+    }
+
+    // 2. Yedek: Yerel diske kaydet (Geliştirme veya Cloudinary kapalıysa)
     var uploadsFolder = Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), "uploads");
     if (!Directory.Exists(uploadsFolder))
         Directory.CreateDirectory(uploadsFolder);
