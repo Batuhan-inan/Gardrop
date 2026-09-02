@@ -128,7 +128,7 @@ Gardırop/
 
 4. **Tarayıcınızdan Erişin:**
    * **Kendi Bilgisayarınızdan:** [http://localhost:5041](http://localhost:5041)
-   * **Aynı Wi-Fi Ağındaki Telefondan / Başka Cihazdan:** `http://<BILGISAYAR_IP_ADRESINIZ>:5041` (Örn: `http://192.168.1.106:5041`)
+   * **Aynı Wi-Fi Ağındaki Telefondan / Başka Cihazdan:** `http://<BILGISAYAR_IP_ADRESINIZ>:5041` (Örn: `http://192.168.1.111:5041`)
 
 ---
 

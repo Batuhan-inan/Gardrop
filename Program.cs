@@ -9,6 +9,13 @@ using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Render / Bulut ortamları için dinamik PORT desteği
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
+
 // Veritabanı ve Repository bağımlılıklarını ekle
 builder.Services.AddSingleton<DbConnectionFactory>();
 builder.Services.AddSingleton<DatabaseInitializer>();
