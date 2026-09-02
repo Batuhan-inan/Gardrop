@@ -34,6 +34,10 @@ const api = {
     }
     const res = await fetch(url, options);
     if (res.status === 401) {
+      if (url.includes('/api/auth/login')) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || 'Kullanıcı adı veya şifre hatalı.');
+      }
       state.currentUser = null;
       renderAuth();
       throw new Error('Oturum süresi doldu.');
