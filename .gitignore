@@ -20,3 +20,6 @@ obj/
 ## Yüklenen Görseller (Kişisel fotoğraflar repoya girmesin)
 wwwroot/uploads/*
 !wwwroot/uploads/.gitkeep
+
+## Gizli Yerel Ayarlar
+appsettings.Development.json
