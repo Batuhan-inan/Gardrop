@@ -115,6 +115,18 @@ const api = {
     return await res.json();
   },
 
+  async adminResetPassword(userId, newPassword) {
+    const res = await this.req(`/api/admin/users/${userId}/password`, {
+      method: 'PUT',
+      body: JSON.stringify({ newPassword })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Şifre güncellenemedi.');
+    }
+    return await res.json();
+  },
+
   async getCategories() {
     const res = await this.req('/api/categories');
     return res.ok ? await res.json() : [];
@@ -648,10 +660,11 @@ function renderAppLayout() {
                   <th>Kayıtlı Kombin</th>
                   <th>Kayıt Tarihi</th>
                   <th>Son Aktivite</th>
+                  <th style="text-align: right;">İşlemler</th>
                 </tr>
               </thead>
               <tbody id="admin-users-tbody">
-                <tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">Kullanıcılar yükleniyor...</td></tr>
+                <tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">Kullanıcılar yükleniyor...</td></tr>
               </tbody>
             </table>
           </div>
@@ -833,6 +846,36 @@ function renderAppLayout() {
             </div>
           </form>
         </div>
+      </div>
+    </div>
+
+    <!-- ADMIN KULLANICI ŞİFRESİ DEĞİŞTİRME MODALI -->
+    <div id="admin-password-modal" class="modal-backdrop">
+      <div class="modal-box" style="max-width: 420px;">
+        <div class="modal-header">
+          <h3 class="modal-title" style="font-size: 1.15rem;">
+            <i class="fa-solid fa-key" style="color: var(--accent-gold); margin-right: 6px;"></i>
+            Kullanıcı Şifresini Değiştir
+          </h3>
+          <button class="modal-close-btn" onclick="closeModal('admin-password-modal')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form onsubmit="handleAdminResetPasswordSubmit(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+          <input type="hidden" id="admin-target-user-id" />
+          <div style="background: rgba(255,255,255,0.04); padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Hedef Hesap:</div>
+            <div id="admin-target-user-name" style="font-weight: 700; color: #fff; margin-top: 2px;"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Atanacak Yeni Şifre *</label>
+            <input type="password" id="admin-target-new-password" class="form-control" placeholder="En az 4 karakter" required />
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('admin-password-modal')">Vazgeç</button>
+            <button type="submit" id="admin-reset-pw-btn" class="btn btn-primary">
+              <i class="fa-solid fa-check"></i> Şifreyi Kaydet
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   `;
@@ -1667,7 +1710,7 @@ function renderAdminUsersTable() {
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+        <td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">
           Aradığınız kriterlere uygun kullanıcı bulunamadı.
         </td>
       </tr>
@@ -1709,9 +1752,47 @@ function renderAdminUsersTable() {
         <td style="color: var(--text-muted); font-size: 0.85rem;">
           ${lastActive}
         </td>
+        <td style="text-align: right;">
+          <button class="btn btn-secondary btn-sm" onclick="openAdminResetPasswordModal(${user.id}, '${escapeHtml(user.username)}', '${escapeHtml(user.fullName || user.username)}')" title="Şifre Belirle">
+            <i class="fa-solid fa-key" style="color: var(--accent-gold);"></i> Şifre Değiştir
+          </button>
+        </td>
       </tr>
     `;
   }).join('');
+}
+
+function openAdminResetPasswordModal(userId, username, fullName) {
+  document.getElementById('admin-target-user-id').value = userId;
+  document.getElementById('admin-target-user-name').innerText = `${fullName} (@${username})`;
+  document.getElementById('admin-target-new-password').value = '';
+  openModal('admin-password-modal');
+}
+
+async function handleAdminResetPasswordSubmit(e) {
+  e.preventDefault();
+  const userId = document.getElementById('admin-target-user-id').value;
+  const newPassword = document.getElementById('admin-target-new-password').value.trim();
+
+  if (newPassword.length < 4) {
+    showToast('Yeni şifre en az 4 karakter olmalıdır!', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('admin-reset-pw-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Kaydediliyor...';
+
+  try {
+    const res = await api.adminResetPassword(userId, newPassword);
+    showToast(res.message || 'Şifre başarıyla güncellendi!', 'success');
+    closeModal('admin-password-modal');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> Şifreyi Kaydet';
+  }
 }
 
 // Uygulamayı başlat

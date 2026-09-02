@@ -1,5 +1,6 @@
 using Dapper;
 using Microsoft.Data.Sqlite;
+using GardiropApp.Services;
 
 namespace GardiropApp.Data;
 
@@ -115,7 +116,19 @@ public class DatabaseInitializer
             // Sütun zaten varsa hata vermez, devam eder
         }
 
-        // 'batu' kullanıcısını veya ilk kullanıcıyı Admin yap
-        connection.Execute("UPDATE Users SET IsAdmin = 1 WHERE Username = 'batu' OR Id = 1;");
+        // 'admin' kullanıcısı yoksa oluştur
+        var adminExists = connection.ExecuteScalar<int>("SELECT COUNT(1) FROM Users WHERE Username = 'admin';");
+        if (adminExists == 0)
+        {
+            var adminHash = PasswordHasher.Hash("admin123");
+            const string insertAdminSql = @"
+                INSERT INTO Users (Username, PasswordHash, FullName, IsAdmin, CreatedAt)
+                VALUES ('admin', @Hash, 'Admin', 1, @CreatedAt);
+            ";
+            connection.Execute(insertAdminSql, new { Hash = adminHash, CreatedAt = DateTime.UtcNow.ToString("o") });
+        }
+
+        // 'batu', 'batuhan' ve 'admin' kullanıcılarını Admin yap
+        connection.Execute("UPDATE Users SET IsAdmin = 1 WHERE Username IN ('admin', 'batu', 'batuhan') OR Id = 1;");
     }
 }

@@ -62,3 +62,5 @@ public class AdminStatsDto
     public int TotalOutfits { get; set; }
     public int TotalWornCount { get; set; }
 }
+
+public record AdminResetPasswordRequest(string NewPassword);

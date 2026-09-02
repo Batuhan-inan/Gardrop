@@ -459,6 +459,27 @@ adminGroup.MapGet("/users", async (UserRepository userRepo, ClaimsPrincipal user
     var users = await userRepo.GetAllUsersWithStatsAsync();
     return Results.Ok(users);
 });
+
+adminGroup.MapPut("/users/{id:int}/password", async (
+    int id,
+    [FromBody] AdminResetPasswordRequest request,
+    UserRepository userRepo,
+    ClaimsPrincipal user) =>
+{
+    if (!user.IsInRole("Admin")) return Results.Forbid();
+
+    if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 4)
+        return Results.BadRequest(new { message = "Yeni şifre en az 4 karakter olmalıdır." });
+
+    var targetUser = await userRepo.GetByIdAsync(id);
+    if (targetUser == null) return Results.NotFound(new { message = "Kullanıcı bulunamadı." });
+
+    var newHash = PasswordHasher.Hash(request.NewPassword);
+    var success = await userRepo.UpdatePasswordAsync(id, newHash);
+    return success 
+        ? Results.Ok(new { message = $"{targetUser.FullName} (@{targetUser.Username}) kullanıcısının şifresi başarıyla güncellendi." })
+        : Results.StatusCode(500);
+});
 #endregion
 
 app.Run();
