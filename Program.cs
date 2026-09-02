@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.DataProtection;
+﻿using Microsoft.AspNetCore.DataProtection;
 using System.Security.Claims;
 using GardiropApp.Data;
 using GardiropApp.Models;
@@ -454,11 +454,19 @@ outfitGroup.MapPost("/{id:int}/worn", async (int id, OutfitRepository repo, Clai
 #region ADMIN ENDPOINTS
 var adminGroup = app.MapGroup("/api/admin").RequireAuthorization();
 
-adminGroup.MapGet("/stats", async (UserRepository userRepo, ClaimsPrincipal user) =>
+adminGroup.MapGet("/stats", async (UserRepository userRepo, DbConnectionFactory db, ClaimsPrincipal user) =>
 {
     if (!user.IsInRole("Admin")) return Results.Forbid();
     var stats = await userRepo.GetSystemStatsAsync();
-    return Results.Ok(stats);
+    return Results.Ok(new
+    {
+        stats.TotalUsers,
+        stats.TotalClothes,
+        stats.TotalOutfits,
+        stats.TotalWornCount,
+        IsPostgres = db.IsPostgres,
+        DatabaseProvider = db.IsPostgres ? "PostgreSQL (Kalıcı Bulut)" : "SQLite (Geçici Yerel)"
+    });
 });
 
 adminGroup.MapGet("/users", async (UserRepository userRepo, ClaimsPrincipal user) =>

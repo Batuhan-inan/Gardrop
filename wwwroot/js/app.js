@@ -648,6 +648,8 @@ function renderAppLayout() {
           </button>
         </div>
 
+        <div id="admin-db-status" style="margin-bottom: 1.25rem;"></div>
+
         <!-- KPI KARTLARI -->
         <div class="kpi-grid" id="admin-kpi-container">
           <div style="color: var(--text-muted); padding: 1rem;">İstatistikler yükleniyor...</div>
