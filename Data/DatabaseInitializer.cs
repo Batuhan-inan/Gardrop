@@ -1,18 +1,16 @@
 using Dapper;
-using Microsoft.Data.Sqlite;
 using GardiropApp.Services;
 
 namespace GardiropApp.Data;
 
 public class DatabaseInitializer
 {
-    private readonly string _connectionString;
+    private readonly DbConnectionFactory _db;
     private readonly IWebHostEnvironment _environment;
 
-    public DatabaseInitializer(IConfiguration configuration, IWebHostEnvironment environment)
+    public DatabaseInitializer(DbConnectionFactory db, IWebHostEnvironment environment)
     {
-        _connectionString = configuration.GetConnectionString("DefaultConnection") 
-                            ?? "Data Source=gardirop.db";
+        _db = db;
         _environment = environment;
     }
 
@@ -25,69 +23,136 @@ public class DatabaseInitializer
             Directory.CreateDirectory(uploadsPath);
         }
 
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
+        using var connection = _db.CreateConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+        {
+            connection.Open();
+        }
 
-        // SQLite yabancı anahtar desteğini aktif et
-        connection.Execute("PRAGMA foreign_keys = ON;");
+        if (!_db.IsPostgres)
+        {
+            try
+            {
+                connection.Execute("PRAGMA foreign_keys = ON;");
+            }
+            catch {}
+        }
 
         // Tabloları oluştur
-        const string createTablesSql = @"
-            CREATE TABLE IF NOT EXISTS Users (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Username TEXT UNIQUE NOT NULL COLLATE NOCASE,
-                PasswordHash TEXT NOT NULL,
-                FullName TEXT NOT NULL,
-                IsAdmin INTEGER NOT NULL DEFAULT 0,
-                CreatedAt TEXT NOT NULL
-            );
+        string createTablesSql;
+        if (_db.IsPostgres)
+        {
+            createTablesSql = @"
+                CREATE TABLE IF NOT EXISTS Users (
+                    Id SERIAL PRIMARY KEY,
+                    Username TEXT UNIQUE NOT NULL,
+                    PasswordHash TEXT NOT NULL,
+                    FullName TEXT NOT NULL,
+                    IsAdmin INTEGER NOT NULL DEFAULT 0,
+                    CreatedAt TEXT NOT NULL
+                );
 
-            CREATE TABLE IF NOT EXISTS Categories (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Name TEXT NOT NULL,
-                Slug TEXT NOT NULL UNIQUE,
-                Icon TEXT NOT NULL,
-                DisplayOrder INTEGER NOT NULL
-            );
+                CREATE TABLE IF NOT EXISTS Categories (
+                    Id SERIAL PRIMARY KEY,
+                    Name TEXT NOT NULL,
+                    Slug TEXT NOT NULL UNIQUE,
+                    Icon TEXT NOT NULL,
+                    DisplayOrder INTEGER NOT NULL
+                );
 
-            CREATE TABLE IF NOT EXISTS ClothingItems (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                UserId INTEGER NOT NULL,
-                Name TEXT NOT NULL,
-                CategoryId INTEGER NOT NULL,
-                Color TEXT NOT NULL,
-                ColorHex TEXT,
-                Season TEXT NOT NULL,
-                ImageUrl TEXT NOT NULL,
-                Brand TEXT,
-                Notes TEXT,
-                LastWornDate TEXT,
-                WearCount INTEGER NOT NULL DEFAULT 0,
-                IsFavorite INTEGER NOT NULL DEFAULT 0,
-                CreatedAt TEXT NOT NULL,
-                FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
-                FOREIGN KEY (CategoryId) REFERENCES Categories(Id)
-            );
+                CREATE TABLE IF NOT EXISTS ClothingItems (
+                    Id SERIAL PRIMARY KEY,
+                    UserId INTEGER NOT NULL REFERENCES Users(Id) ON DELETE CASCADE,
+                    Name TEXT NOT NULL,
+                    CategoryId INTEGER NOT NULL REFERENCES Categories(Id),
+                    Color TEXT NOT NULL,
+                    ColorHex TEXT,
+                    Season TEXT NOT NULL,
+                    ImageUrl TEXT NOT NULL,
+                    Brand TEXT,
+                    Notes TEXT,
+                    LastWornDate TEXT,
+                    WearCount INTEGER NOT NULL DEFAULT 0,
+                    IsFavorite INTEGER NOT NULL DEFAULT 0,
+                    CreatedAt TEXT NOT NULL
+                );
 
-            CREATE TABLE IF NOT EXISTS Outfits (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                UserId INTEGER NOT NULL,
-                Name TEXT NOT NULL,
-                Description TEXT,
-                LastWornDate TEXT,
-                WearCount INTEGER NOT NULL DEFAULT 0,
-                CreatedAt TEXT NOT NULL,
-                FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE
-            );
+                CREATE TABLE IF NOT EXISTS Outfits (
+                    Id SERIAL PRIMARY KEY,
+                    UserId INTEGER NOT NULL REFERENCES Users(Id) ON DELETE CASCADE,
+                    Name TEXT NOT NULL,
+                    Description TEXT,
+                    LastWornDate TEXT,
+                    WearCount INTEGER NOT NULL DEFAULT 0,
+                    CreatedAt TEXT NOT NULL
+                );
 
-            CREATE TABLE IF NOT EXISTS OutfitItems (
-                OutfitId INTEGER NOT NULL,
-                ClothingItemId INTEGER NOT NULL,
-                PRIMARY KEY (OutfitId, ClothingItemId),
-                FOREIGN KEY (OutfitId) REFERENCES Outfits(Id) ON DELETE CASCADE,
-                FOREIGN KEY (ClothingItemId) REFERENCES ClothingItems(Id) ON DELETE CASCADE
-            );
-        ";
+                CREATE TABLE IF NOT EXISTS OutfitItems (
+                    OutfitId INTEGER NOT NULL REFERENCES Outfits(Id) ON DELETE CASCADE,
+                    ClothingItemId INTEGER NOT NULL REFERENCES ClothingItems(Id) ON DELETE CASCADE,
+                    PRIMARY KEY (OutfitId, ClothingItemId)
+                );
+            ";
+        }
+        else
+        {
+            createTablesSql = @"
+                CREATE TABLE IF NOT EXISTS Users (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Username TEXT UNIQUE NOT NULL COLLATE NOCASE,
+                    PasswordHash TEXT NOT NULL,
+                    FullName TEXT NOT NULL,
+                    IsAdmin INTEGER NOT NULL DEFAULT 0,
+                    CreatedAt TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS Categories (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Name TEXT NOT NULL,
+                    Slug TEXT NOT NULL UNIQUE,
+                    Icon TEXT NOT NULL,
+                    DisplayOrder INTEGER NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ClothingItems (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    UserId INTEGER NOT NULL,
+                    Name TEXT NOT NULL,
+                    CategoryId INTEGER NOT NULL,
+                    Color TEXT NOT NULL,
+                    ColorHex TEXT,
+                    Season TEXT NOT NULL,
+                    ImageUrl TEXT NOT NULL,
+                    Brand TEXT,
+                    Notes TEXT,
+                    LastWornDate TEXT,
+                    WearCount INTEGER NOT NULL DEFAULT 0,
+                    IsFavorite INTEGER NOT NULL DEFAULT 0,
+                    CreatedAt TEXT NOT NULL,
+                    FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
+                    FOREIGN KEY (CategoryId) REFERENCES Categories(Id)
+                );
+
+                CREATE TABLE IF NOT EXISTS Outfits (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    UserId INTEGER NOT NULL,
+                    Name TEXT NOT NULL,
+                    Description TEXT,
+                    LastWornDate TEXT,
+                    WearCount INTEGER NOT NULL DEFAULT 0,
+                    CreatedAt TEXT NOT NULL,
+                    FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS OutfitItems (
+                    OutfitId INTEGER NOT NULL,
+                    ClothingItemId INTEGER NOT NULL,
+                    PRIMARY KEY (OutfitId, ClothingItemId),
+                    FOREIGN KEY (OutfitId) REFERENCES Outfits(Id) ON DELETE CASCADE,
+                    FOREIGN KEY (ClothingItemId) REFERENCES ClothingItems(Id) ON DELETE CASCADE
+                );
+            ";
+        }
 
         connection.Execute(createTablesSql);
 
@@ -106,18 +171,8 @@ public class DatabaseInitializer
             connection.Execute(insertCategoriesSql);
         }
 
-        // Var olan veritabanlarında IsAdmin sütunu yoksa ekle (Migration)
-        try
-        {
-            connection.Execute("ALTER TABLE Users ADD COLUMN IsAdmin INTEGER NOT NULL DEFAULT 0;");
-        }
-        catch
-        {
-            // Sütun zaten varsa hata vermez, devam eder
-        }
-
         // 'admin' kullanıcısı yoksa oluştur
-        var adminExists = connection.ExecuteScalar<int>("SELECT COUNT(1) FROM Users WHERE Username = 'admin';");
+        var adminExists = connection.ExecuteScalar<int>("SELECT COUNT(1) FROM Users WHERE LOWER(Username) = 'admin';");
         if (adminExists == 0)
         {
             var adminHash = PasswordHasher.Hash("admin123");
@@ -128,15 +183,20 @@ public class DatabaseInitializer
             connection.Execute(insertAdminSql, new { Hash = adminHash, CreatedAt = DateTime.UtcNow.ToString("o") });
         }
 
-        // 'batu' kullanıcısının yetkisini kaldır
-        connection.Execute("UPDATE Users SET IsAdmin = 0 WHERE Username = 'batu';");
+        // 'batuhan' kullanıcısı yoksa oluştur
+        var batuhanExists = connection.ExecuteScalar<int>("SELECT COUNT(1) FROM Users WHERE LOWER(Username) = 'batuhan';");
+        if (batuhanExists == 0)
+        {
+            var batuhanHash = PasswordHasher.Hash("password123");
+            const string insertBatuhanSql = @"
+                INSERT INTO Users (Username, PasswordHash, FullName, IsAdmin, CreatedAt)
+                VALUES ('batuhan', @Hash, 'Batuhan İnan', 1, @CreatedAt);
+            ";
+            connection.Execute(insertBatuhanSql, new { Hash = batuhanHash, CreatedAt = DateTime.UtcNow.ToString("o") });
+        }
 
-        // 'Batuhan İnan' ve 'admin' kullanıcılarını Admin yap
-        connection.Execute(@"
-            UPDATE Users 
-            SET IsAdmin = 1, FullName = 'Batuhan İnan' 
-            WHERE Username IN ('batuhan', 'batuhaninan') OR Id = 1;
-        ");
-        connection.Execute("UPDATE Users SET IsAdmin = 1 WHERE Username = 'admin';");
+        // Rolleri güncelle
+        connection.Execute("UPDATE Users SET IsAdmin = 0 WHERE LOWER(Username) = 'batu';");
+        connection.Execute("UPDATE Users SET IsAdmin = 1 WHERE LOWER(Username) IN ('admin', 'batuhan', 'batuhaninan');");
     }
 }

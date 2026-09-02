@@ -23,14 +23,14 @@ public class UserRepository
     public async Task<User?> GetByUsernameAsync(string username)
     {
         using var conn = _db.CreateConnection();
-        const string sql = "SELECT * FROM Users WHERE Username = @Username;";
+        const string sql = "SELECT * FROM Users WHERE LOWER(Username) = LOWER(@Username);";
         return await conn.QuerySingleOrDefaultAsync<User>(sql, new { Username = username.Trim() });
     }
 
     public async Task<bool> ExistsAsync(string username)
     {
         using var conn = _db.CreateConnection();
-        const string sql = "SELECT COUNT(1) FROM Users WHERE Username = @Username;";
+        const string sql = "SELECT COUNT(1) FROM Users WHERE LOWER(Username) = LOWER(@Username);";
         return await conn.ExecuteScalarAsync<bool>(sql, new { Username = username.Trim() });
     }
 
@@ -39,8 +39,8 @@ public class UserRepository
         using var conn = _db.CreateConnection();
         const string sql = @"
             INSERT INTO Users (Username, PasswordHash, FullName, CreatedAt)
-            VALUES (@Username, @PasswordHash, @FullName, @CreatedAt);
-            SELECT last_insert_rowid();
+            VALUES (@Username, @PasswordHash, @FullName, @CreatedAt)
+            RETURNING Id;
         ";
         return await conn.ExecuteScalarAsync<int>(sql, new
         {
@@ -54,7 +54,7 @@ public class UserRepository
     public async Task<bool> ExistsExceptUserAsync(string username, int excludeUserId)
     {
         using var conn = _db.CreateConnection();
-        const string sql = "SELECT COUNT(1) FROM Users WHERE Username = @Username AND Id != @ExcludeUserId;";
+        const string sql = "SELECT COUNT(1) FROM Users WHERE LOWER(Username) = LOWER(@Username) AND Id != @ExcludeUserId;";
         return await conn.ExecuteScalarAsync<bool>(sql, new { Username = username.Trim(), ExcludeUserId = excludeUserId });
     }
 
@@ -122,7 +122,10 @@ public class UserRepository
     public async Task<bool> DeleteUserAsync(int id)
     {
         using var conn = _db.CreateConnection();
-        conn.Execute("PRAGMA foreign_keys = ON;");
+        if (!_db.IsPostgres)
+        {
+            try { conn.Execute("PRAGMA foreign_keys = ON;"); } catch {}
+        }
         const string sql = "DELETE FROM Users WHERE Id = @Id;";
         var rows = await conn.ExecuteAsync(sql, new { Id = id });
         return rows > 0;

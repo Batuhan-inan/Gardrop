@@ -95,8 +95,8 @@ public class ClothingRepository
             INSERT INTO ClothingItems 
             (UserId, Name, CategoryId, Color, ColorHex, Season, ImageUrl, Brand, Notes, WearCount, IsFavorite, CreatedAt)
             VALUES 
-            (@UserId, @Name, @CategoryId, @Color, @ColorHex, @Season, @ImageUrl, @Brand, @Notes, @WearCount, @IsFavorite, @CreatedAt);
-            SELECT last_insert_rowid();
+            (@UserId, @Name, @CategoryId, @Color, @ColorHex, @Season, @ImageUrl, @Brand, @Notes, @WearCount, @IsFavorite, @CreatedAt)
+            RETURNING Id;
         ";
 
         return await conn.ExecuteScalarAsync<int>(sql, new

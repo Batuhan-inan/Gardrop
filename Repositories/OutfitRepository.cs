@@ -99,8 +99,8 @@ public class OutfitRepository
         {
             const string insertOutfitSql = @"
                 INSERT INTO Outfits (UserId, Name, Description, WearCount, CreatedAt)
-                VALUES (@UserId, @Name, @Description, @WearCount, @CreatedAt);
-                SELECT last_insert_rowid();
+                VALUES (@UserId, @Name, @Description, @WearCount, @CreatedAt)
+                RETURNING Id;
             ";
 
             var outfitId = await conn.ExecuteScalarAsync<int>(insertOutfitSql, new
