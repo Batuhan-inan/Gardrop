@@ -154,19 +154,6 @@ Gardırop/
 
 ---
 
-## 🔑 Varsayılan Giriş Bilgileri
-
-Sistem ilk açıldığında otomatik olarak yönetici hesapları tanımlanır:
-
-| Kullanıcı Adı | Şifre | Rol | Yetkiler |
-| :--- | :--- | :--- | :--- |
-| **`batuhan`** | `password123` | 👑 **Yönetici (Admin)** | Gardırop Yönetimi + Yönetim Paneli |
-| **`admin`** | `admin123` | 👑 **Yönetici (Admin)** | Gardırop Yönetimi + Yönetim Paneli |
-
-*Yeni kullanıcılar "Yeni Hesap Aç" sekmesinden kendi bağımsız hesaplarını oluşturabilirler.*
-
----
-
 ## 📄 Lisans
 
 Bu proje [MIT Lisansı](LICENSE) ile lisanslanmıştır. Açık kaynaklıdır, dilediğiniz gibi geliştirebilir ve kendi gardırobunuz için kullanabilirsiniz.
