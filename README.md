@@ -1,66 +1,81 @@
-# 👗 Gardırop & Kombin Asistanı (Wardrobe Assistant)
+# 👗 Gardırop & Stil Asistanı (Smart Wardrobe Assistant)
 
-[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?style=flat&logo=dotnet)](https://dotnet.microsoft.com/)
+[![.NET](https://img.shields.io/badge/.NET-8.0%20LTS-512BD4?style=flat&logo=dotnet)](https://dotnet.microsoft.com/)
 [![Dapper](https://img.shields.io/badge/ORM-Dapper-e36209?style=flat)](https://github.com/DapperLib/Dapper)
-[![SQLite](https://img.shields.io/badge/Database-SQLite-003B57?style=flat&logo=sqlite)](https://www.sqlite.org/)
-[![JavaScript](https://img.shields.io/badge/Frontend-Vanilla%20JS-F7DF1E?style=flat&logo=javascript)](https://developer.mozilla.org/)
+[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%20%7C%20SQLite-4169E1?style=flat&logo=postgresql)](https://www.postgresql.org/)
+[![Cloudinary](https://img.shields.io/badge/Storage-Cloudinary%20CDN-3448C5?style=flat&logo=cloudinary)](https://cloudinary.com/)
+[![Docker](https://img.shields.io/badge/Deployment-Docker%20%7C%20Render-2496ED?style=flat&logo=docker)](https://render.com/)
+[![Frontend](https://img.shields.io/badge/Frontend-Vanilla%20JS%20(SPA)-F7DF1E?style=flat&logo=javascript)](https://developer.mozilla.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Dolabınızdaki kıyafetleri fotoğraflarıyla dijitalleştiren, unuttuğunuz parçaları gün yüzüne çıkaran, akıllı renk ve stil eşleşmeleriyle kombinler yapıp kullanım geçmişinizi takip etmenizi sağlayan **C# (ASP.NET Core) + Dapper + SQLite** tabanlı modern bir web uygulamasıdır.
-
-Uygulama, **çok kullanıcılı (multi-user)** mimarisi sayesinde evdeki aile bireylerinin (ör. kardeşler/farklı cihazlar) birbirinin verisine karışmadan kendi kişisel gardırobunu yönetmesine imkan tanır.
+Fiziksel dolabınızdaki kıyafetleri fotoğraflarıyla dijitalleştiren, unuttuğunuz parçaları gün yüzüne çıkaran, akıllı renk ve stil eşleşmeleriyle kombinler yaratan, **C# (.NET 8 LTS) + Dapper + PostgreSQL/SQLite + Cloudinary** tabanlı modern, bulut uyumlu ve çok kullanıcılı bir gardırop yönetim platformudur.
 
 ---
 
 ## 💡 Projenin Doğuş Hikayesi ve Amacı
 
 ### ❓ Hangi Problemi Çözüyoruz?
-Günlük hayatımızda gardıroplarımız onlarca parça kıyafetle dolu olmasına rağmen çoğumuz sabahları aynanın karşısında **"Giyecek hiçbir şeyim yok!"** hissini yaşarız. Bunun en büyük sebebi dolabımızın arkalarında kalan, askılarda gözden kaçan ve varlığını unuttuğumuz onlarca kıyafetin olmasıdır.
+Günlük hayatımızda gardıroplarımız onlarca parça kıyafetle dolu olmasına rağmen çoğumuz sabahları aynanın karşısında **"Giyecek hiçbir şeyim yok!"** stresini yaşarız. Bunun en büyük sebebi dolabımızın arkalarında kalan, askılarda gözden kaçan ve varlığını unuttuğumuz onlarca kıyafetin olmasıdır.
 
-Ayrıca belirli bir parçayı (örneğin *Siyah Kot Pantolon*) giymeye karar verdiğimizde:
+Ayrıca belirli bir parçayı (örneğin *Siyah Kot Pantolon*) giymek istediğimizde:
 * *"Bunun üstüne uyumlu elimde hangi renk tişörtler veya gömlekler vardı?"* sorusunun cevabını bulmak için dolabı baştan aşağı karıştırmak zorunda kalırız.
-* Aynı evde yaşayan aile bireyleri (örneğin bir abla ve kardeş) farklı telefon ve bilgisayarlardan kendi kıyafetlerini düzenli bir şekilde takip etmek ister.
+* Aile bireyleri veya arkadaşlar kendi gardıroplarını başkalarının kıyafetlerine karışmadan, kişisel alanlarında bağımsızca yönetmek ister.
+* Ücretsiz bulut dağıtımlarında sunucuların geçici diskleri (ephemeral storage) yüzünden fotoğrafların ve kullanıcı verilerinin silinme riski vardır.
 
 ### 🎯 Çözümümüz ve Vizyonumuz
-Bu uygulama, fiziksel dolabınızı dijital cebinize taşımak için tasarlandı:
-1. **Dolabı Dijitalleştirmek:** Dolabın karşısına geçip telefonunuzla kıyafetlerin fotoğraflarını saniyeler içinde çekerek kişisel moda envanterinizi oluşturursunuz.
-2. **Akıllı Eşleştirme & Kombin:** Örneğin siyah bir pantolon seçtiğinizde sistem elinizdeki tüm üst giyimleri ve uyumlu renkleri filtreleyerek saniyeler içinde yeni kombinler keşfetmenizi sağlar.
-3. **Sürdürülebilir Dolap Yönetimi:** "Dolapta Unutulanlar" algoritması sayesinde hiç giymediğiniz kıyafetleri size hatırlatarak gereksiz alışverişin önüne geçer ve elinizdekileri en verimli şekilde değerlendirmenizi sağlar.
-4. **Bağımsız Kullanım:** Tek bir sunucu üzerinden her kullanıcı kendi şifresiyle oturum açar ve birbirinin alanına müdahale etmeden kendi gardırobunun hakimi olur.
+Bu uygulama, fiziksel dolabınızı cebinize taşımak ve kalıcı kılmak için tasarlandı:
+1. **Dolabı Dijitalleştirmek:** Dolabın karşısına geçip telefon kamerasıyla kıyafetlerin fotoğraflarını saniyeler içinde çekerek kişisel moda envanterinizi oluşturursunuz.
+2. **Akıllı Eşleştirme & Kombin:** Seçtiğiniz bir alt giyime (ör. Siyah Kot) göre uyumlu renklerdeki üst giyim ve aksesuarlar dinamik olarak filtrelenir ve size kombin ipuçları sunar.
+3. **Sürdürülebilir Dolap Yönetimi:** *"Dolapta Unutulanlar"* algoritması hiç giyilmemiş veya uzun süredir giyilmeyen kıyafetleri öne çıkararak gereksiz tüketimi önler.
+4. **Ömür Boyu Kalıcı Bulut Mimarisi:** Fotoğraflar Cloudinary CDN'e, veriler ise Render PostgreSQL veritabanına kaydedilir; sunucu yeniden başlasa bile hiçbir veri asla kaybolmaz.
+5. **Kapsamlı Yönetim (Admin) Paneli:** Sistem yöneticisi sistemdeki tüm kullanıcı sayılarını, dolap doluluklarını izleyebilir, şifre sıfırlayabilir ve istenmeyen hesapları silebilir.
 
 ---
 
 ## ✨ Temel Özellikler
 
-* 📸 **Mobil Kamera Entegrasyonu:** Dolabın karşısındayken telefondan arka kamerayı açarak tek tıkla kıyafet fotoğrafı çekip yükleyebilme (`capture="environment"`).
-* 👔 **Kategori & Renk Sistemi:** Üst giyim, alt giyim, dış giyim, ayakkabı ve aksesuarlar için dinamik filtreleme ve renk paleti seçimi.
-* 🪄 **İnteraktif Kombin Stüdyosu:** 
-  * Parçaları görsel yuvalara (Üst, Alt, Ceket, Ayakkabı, Aksesuar) yerleştirerek canlı önizleme.
-  * **Akıllı Öneri Sistemi:** Bir alt giyim (ör. Siyah Kot) seçildiğinde, uyumlu renkteki üst giyim ve parçaları otomatik filtreleme ve ipucu gösterme.
-  * Kombinleri isimlendirerek kaydetme (ör. *"Hafta Sonu Rahatlığı"*).
-* ⏳ **"Dolapta Unutulanlar" & Giyim Takibi:** 
-  * Her kıyafetin giyilme sayısı ve son giyilme tarihi takip edilir.
-  * *"Bugün Bunu Giydim"* butonuyla kombindeki tüm parçaların giyim sayaçları tek seferde güncellenir.
-  * Uzun süredir giyilmemiş hazineler özel sekmede hatırlatılır ve tek tıkla stüdyoya taşınabilir.
-* 🔒 **Gizlilik & Çoklu Oturum (Multi-User):**
-  * PBKDF2 + SHA256 + Salt ile güvenli şifreleme.
-  * Güvenli Cookie Authentication.
-  * Her kullanıcının dolabı tamamen kendine özeldir; hiçbir kullanıcı bir diğerinin kıyafetlerini göremez.
-* 👤 **Profil & Şifre Yönetimi:** Kullanıcılar sağ üstteki profil menüsünden kullanıcı adı, ad-soyad ve şifrelerini kolayca güncelleyebilir.
-* 🌐 **Yerel Ağda Cihazlar Arası Erişim:** Bilgisayarda çalışan sunucuya aynı Wi-Fi ağındaki herhangi bir telefon veya tabletten tarayıcı ile doğrudan bağlanabilme.
+### 👗 Gardırop ve Moda Yönetimi
+* 📸 **Doğrudan Mobil Kamera Desteği:** Dolabın karşısındayken telefonunuzun arka kamerasını tek tıkla açarak fotoğraf çekme (`capture="environment"`).
+* ☁️ **Cloudinary Bulut Depolama:** Yüklenen fotoğrafların otomatik boyutlandırma ve format optimizasyonuyla (WebP/Auto) ömür boyu saklanması.
+* 🎨 **Kategori ve Renk Paleti:** Üst giyim, alt giyim, dış giyim, ayakkabı ve aksesuar kategorileri ile canlı renk çipleri üzerinden hızlı filtreleme.
+* ⭐ **Favoriler ve Arama:** En sevilen parçaları işaretleme ve marka/not/kategori bazında anlık arama.
+
+### 🪄 İnteraktif Kombin Stüdyosu
+* Parçaları görsel vitrin yuvalarına yerleştirerek (Üst, Alt, Dış, Ayakkabı, Aksesuar) canlı önizleme yapabilme.
+* **Akıllı Renk Uyumu Motoru:** Seçilen ana parçaya göre renk uyum rehberliğini devreye sokarak uyumlu alternatifleri vurgulama.
+* Kombinleri isimlendirerek ve açıklama ekleyerek dolaba kaydetme.
+
+### ⏳ "Dolapta Unutulanlar" & Giyim Sayacı
+* Her kıyafetin kaç kez giyildiği ve en son ne zaman giyildiği takip edilir.
+* **"Bugün Bunu Giydim" Butonu:** Kombinlerim sekmesinde bir kombine basıldığında, o kombindeki tüm parçaların giyim sayacı ve tarihi tek tıkla güncellenir.
+* Uzun süredir giyilmeyen parçalar özel sekmede hatırlatılır ve tek tıkla *"Bununla Kombin Yap"* butonuyla stüdyoya aktarılır.
+
+### 🛡️ Kapsamlı Yönetim (Admin) Paneli
+* **4 Ana KPI Kartı:** Toplam Kayıtlı Kullanıcı, Toplam Kıyafet Sayısı, Kayıtlı Kombinler ve Toplam Giyim Hareketi.
+* **Kullanıcı Takip Tablosu:** Tüm kullanıcıların kullanıcı adı, ad-soyad, yetki rolü, dolabındaki kıyafet sayısı, kombin sayısı ve kayıt/son aktivite tarihleri.
+* **Kullanıcı Şifresi Değiştirme:** Admin panelinden herhangi bir kullanıcının şifresini eski şifreyi bilmeye gerek kalmadan anında sıfırlama/güncelleme.
+* **Kullanıcı Silme:** İstenmeyen hesapları ve o hesaba bağlı tüm kıyafet/kombin verilerini kaskad olarak kalıcı silme (kazara kendini silme korumasıyla).
+
+### 🔒 Güvenlik & Çoklu Kullanıcı
+* **PBKDF2 (SHA-256 + Salt):** 100.000 iterasyonlu şifre güvenliği.
+* **Güvenli Cookie Authentication:** HttpOnly, Secure oturum yönetimi.
+* **Cihaza Özel Akıllı Hafıza:** Ortak cihazlarda kişisel gizliliği korumak adına sadece o tarayıcıda giriş yapılmış hesaplar hatırlanır.
+* **Açık Kaynak Güvenliği:** Kod tabanında hiçbir gizli API anahtarı veya şifre tutulmaz; ortam değişkenleri (Environment Variables) üzerinden okunur.
 
 ---
 
 ## 🏗️ Mimari ve Teknolojiler
 
-| Katman | Teknoloji / Kütüphane | Açıklama |
+| Katman | Teknoloji | Açıklama |
 | :--- | :--- | :--- |
-| **Backend** | **C# (.NET 10)** ASP.NET Core | Minimal APIs mimarisiyle hafif, modüler ve yüksek performanslı uç noktalar |
-| **Veri Tabanı** | **SQLite** (`gardirop.db`) | Kurulumsuz (serverless), sıfır kaynak tüketen, tek dosya veritabanı |
-| **Micro-ORM** | **Dapper** | Saf SQL sorguları, multi-mapping ve transaction kontrolü |
-| **Şifreleme** | **PBKDF2 (Rfc2898DeriveBytes)** | 100.000 iterasyonlu endüstri standardı şifre hashleme |
-| **Frontend** | **HTML5, CSS3, Vanilla JS (ES6+)** | Framework bağımlılığı olmayan, responsive (mobil öncelikli) SPA mimarisi |
-| **İkon & Font** | FontAwesome 6, Plus Jakarta Sans | Modern lüks moda tasarım estetiği |
+| **Backend** | **C# (.NET 8 LTS)** ASP.NET Core | Minimal APIs mimarisiyle hafif, modüler ve yüksek performanslı uç noktalar |
+| **Bulut Veritabanı** | **PostgreSQL** (`Npgsql`) | Render üzerinde 7/24 çalışan, ömür boyu kalıcı ilişkisel veritabanı |
+| **Yerel Veritabanı** | **SQLite** (`gardirop.db`) | Geliştirme ortamında internetsiz ve kurulumsuz çalışma desteği |
+| **Micro-ORM** | **Dapper** | Yüksek performanslı SQL sorguları, multi-mapping ve transaction desteği |
+| **Medya Depolama** | **Cloudinary CDN** | Kalıcı görsel barındırma ve otomatik WebP optimizasyonu |
+| **Container & Cloud** | **Docker + Render.com** | Debian Bookworm tabanlı multi-stage Dockerfile ile 7/24 canlı yayın |
+| **Frontend** | **Vanilla JavaScript (ES6+), CSS3** | Framework bağımlılığı olmayan, modern responsive SPA mimarisi |
+| **Tasarım & Font** | FontAwesome 6, Plus Jakarta Sans | Koyu tema (Dark Mode) ve glassmorphism lüks moda estetiği |
 
 ---
 
@@ -70,79 +85,88 @@ Bu uygulama, fiziksel dolabınızı dijital cebinize taşımak için tasarlandı
 Gardırop/
 │
 ├── Data/
-│   ├── DatabaseInitializer.cs   # SQLite tabloları ve varsayılan verilerin otomatik kurulumu
-│   └── DbConnectionFactory.cs   # Dapper bağlantı fabrikası (IDbConnection)
+│   ├── DatabaseInitializer.cs   # PostgreSQL & SQLite tabloları ve varsayılan seed kurulumu
+│   └── DbConnectionFactory.cs   # Ortama göre PostgreSQL (Npgsql) veya SQLite (Dapper) fabrikası
 │
 ├── Models/
-│   ├── User.cs                  # Kullanıcı modeli
+│   ├── User.cs                  # Kullanıcı modeli (IsAdmin yetki alanı dahil)
 │   ├── Category.cs              # Giyim kategorisi modeli
-│   ├── ClothingItem.cs          # Kıyafet modeli
+│   ├── ClothingItem.cs          # Kıyafet modeli (WearCount, LastWornDate)
 │   ├── Outfit.cs                # Kombin ve ara tablo modelleri
-│   └── DTOs.cs                  # İstek/Yanıt veri transfer nesneleri
+│   └── DTOs.cs                  # Request/Response DTO'ları ve Admin modelleri
 │
 ├── Repositories/
-│   ├── UserRepository.cs        # Kullanıcı veritabanı işlemleri
-│   ├── CategoryRepository.cs    # Kategori sorguları
-│   ├── ClothingRepository.cs    # Kıyafet filtreleme, ekleme, giyim sayacı
+│   ├── UserRepository.cs        # Kullanıcı sorguları, admin kullanıcı istatistikleri ve silme
+│   ├── CategoryRepository.cs    # Kategori listeleme
+│   ├── ClothingRepository.cs    # Kıyafet CRUD, filtreleme, giyilme takibi
 │   └── OutfitRepository.cs      # Multi-mapping ile kombin ve parça ilişkileri
 │
 ├── Services/
+│   ├── CloudinaryService.cs     # Cloudinary CDN görsel yükleme servisi
 │   └── PasswordHasher.cs        # PBKDF2 parola hashleme ve doğrulama servisi
 │
-├── wwwroot/                     # Statik Web Ön Yüzü
-│   ├── css/style.css            # Lüks koyu tema, glassmorphism ve responsive CSS
-│   ├── js/app.js                # Durum yönetimi (State), API istemcisi ve Stüdyo motoru
-│   ├── images/                  # Varsayılan ikonlar ve SVG görseller
-│   ├── uploads/                 # Kullanıcıların yüklediği fotoğraflar
-│   └── index.html               # Ana SPA sayfası
+├── wwwroot/                     # Statik Web Ön Yüzü (SPA)
+│   ├── css/style.css            # Lüks koyu tema, glassmorphism ve Admin Dashboard stilleri
+│   ├── js/app.js                # State yönetimi, Admin Paneli, Stüdyo motoru ve API istemcisi
+│   └── index.html               # Cache-buster destekli ana HTML sayfası
 │
-├── Program.cs                   # API uç noktaları, Cookie Auth ve DI konfigürasyonu
-└── GardiropApp.csproj           # Proje ayarları ve NuGet paketleri
+├── Dockerfile                   # .NET 8 Debian tabanlı çok aşamalı Docker yapılandırması
+├── Program.cs                   # Minimal API rotaları, Admin uç noktaları ve DI tanımları
+├── appsettings.json             # Güvenli şablon konfigürasyon dosyası
+└── GardiropApp.csproj           # Proje ayarları ve NuGet bağımlılıkları
 ```
 
 ---
 
 ## 🚀 Kurulum ve Çalıştırma
 
-### Gereksinimler
-* [.NET 10 SDK](https://dotnet.microsoft.com/download) kurulu olmalıdır.
-* Herhangi bir harici veritabanı sunucusu kurmanıza **gerek yoktur** (SQLite uygulama açıldığında otomatik oluşturulur).
+### 1. Yerel Geliştirme (Local Development)
 
-### Adımlar
+#### Gereksinimler:
+* [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 
-1. **Projeyi Klonlayın veya İndirin:**
+#### Adımlar:
+1. **Depoyu Klonlayın:**
    ```bash
-   git clone https://github.com/KULLANICI_ADINIZ/Gardirop.git
-   cd Gardirop
+   git clone https://github.com/Batuhan-inan/Gardrop.git
+   cd Gardrop
    ```
-
-2. **Paketleri Geri Yükleyin:**
-   ```bash
-   dotnet restore
-   ```
-
-3. **Uygulamayı Başlatın:**
+2. **Uygulamayı Başlatın:**
    ```bash
    dotnet run --launch-profile "http"
    ```
+3. **Tarayıcınızdan Açın:**  
+   [http://localhost:5041](http://localhost:5041)
 
-4. **Tarayıcınızdan Erişin:**
-   * **Kendi Bilgisayarınızdan:** [http://localhost:5041](http://localhost:5041)
-   * **Aynı Wi-Fi Ağındaki Telefondan / Başka Cihazdan:** `http://<BILGISAYAR_IP_ADRESINIZ>:5041` (Örn: `http://192.168.1.111:5041`)
+*(Harici veritabanı belirtilmediğinde uygulama yerel `gardirop.db` SQLite dosyasını otomatik olarak oluşturur).*
 
 ---
 
-## 💡 Demo Giriş Bilgileri
+### 2. Bulut Dağıtımı (Docker & Render.com)
 
-Sistemi hızlıca test edebilmeniz için giriş ekranında tek tıkla doldurulabilen hazır hesaplar mevcuttur:
+1. Projeyi GitHub'a pushlayın.
+2. Render.com üzerinde **Web Service** oluşturup repoyu bağlayın (Runtime: **Docker**).
+3. Render üzerinde **PostgreSQL** veritabanı oluşturun.
+4. Web servisinin **Environment Variables** bölümüne şu iki gizli anahtarı tanımlayın:
+   * `DATABASE_URL`: PostgreSQL Internal URL (`postgresql://...`)
+   * `CLOUDINARY_URL`: Cloudinary API URL (`cloudinary://API_KEY:API_SECRET@CLOUD_NAME`)
+5. Render otomatik olarak Docker container'ını derleyecek ve sitenizi 7/24 canlıya alacaktır.
 
-* **Batu:** `batu` / `password123`
-* **Abla:** `abla` / `password123`
+---
 
-*İstediğiniz zaman "Yeni Hesap Aç" sekmesinden kendi özel hesabınızı oluşturabilirsiniz.*
+## 🔑 Varsayılan Giriş Bilgileri
+
+Sistem ilk açıldığında otomatik olarak yönetici hesapları tanımlanır:
+
+| Kullanıcı Adı | Şifre | Rol | Yetkiler |
+| :--- | :--- | :--- | :--- |
+| **`batuhan`** | `password123` | 👑 **Yönetici (Admin)** | Gardırop Yönetimi + Yönetim Paneli |
+| **`admin`** | `admin123` | 👑 **Yönetici (Admin)** | Gardırop Yönetimi + Yönetim Paneli |
+
+*Yeni kullanıcılar "Yeni Hesap Aç" sekmesinden kendi bağımsız hesaplarını oluşturabilirler.*
 
 ---
 
 ## 📄 Lisans
 
-Bu proje [MIT Lisansı](LICENSE) altında lisanslanmıştır. Dilediğiniz gibi geliştirebilir, değiştirebilir ve kişisel gardırobunuz için kullanabilirsiniz.
+Bu proje [MIT Lisansı](LICENSE) ile lisanslanmıştır. Açık kaynaklıdır, dilediğiniz gibi geliştirebilir ve kendi gardırobunuz için kullanabilirsiniz.
