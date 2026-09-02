@@ -1,17 +1,17 @@
-# 1. Build Aşaması (SDK)
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# 1. Build Aşaması (LTS Debian tabanlı - Render ve tüm bulutlarda %100 kararlı)
+FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Bağımlılıkları geri yükle (Önbellekleme için önce csproj kopyalanır)
+# Bağımlılıkları geri yükle
 COPY ["GardiropApp.csproj", "./"]
 RUN dotnet restore "GardiropApp.csproj"
 
-# Tüm kaynak kodları kopyala ve Release olarak derle
+# Tüm kaynak kodları kopyala ve derle
 COPY . .
 RUN dotnet publish "GardiropApp.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-# 2. Çalışma Aşaması (Hafif Runtime)
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+# 2. Çalışma Aşaması (Hafif ve Kararlı Runtime)
+FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 
 # Derlenen dosyaları kopyala
