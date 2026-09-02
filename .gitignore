@@ -1,0 +1,22 @@
+## .NET Core
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+
+## SQLite Veritabanı
+*.db
+*.db-shm
+*.db-wal
+
+## Visual Studio / VS Code
+.vs/
+.vscode/
+*.suo
+*.user
+*.userprefs
+
+## Yüklenen Görseller (Kişisel fotoğraflar repoya girmesin)
+wwwroot/uploads/*
+!wwwroot/uploads/.gitkeep
