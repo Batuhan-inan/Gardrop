@@ -245,8 +245,50 @@ async function initApp() {
   await loadOutfits();
 }
 
+function getDeviceSavedAccounts() {
+  try {
+    const raw = localStorage.getItem('gardirop_saved_accounts');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveAccountToDevice(username, fullName) {
+  try {
+    let accounts = getDeviceSavedAccounts();
+    accounts = accounts.filter(a => a.username.toLowerCase() !== username.toLowerCase());
+    accounts.unshift({ username, fullName: fullName || username });
+    if (accounts.length > 2) accounts = accounts.slice(0, 2);
+    localStorage.setItem('gardirop_saved_accounts', JSON.stringify(accounts));
+  } catch {}
+}
+
+function removeAccountFromDevice(username, event) {
+  if (event) event.stopPropagation();
+  try {
+    let accounts = getDeviceSavedAccounts();
+    accounts = accounts.filter(a => a.username.toLowerCase() !== username.toLowerCase());
+    localStorage.setItem('gardirop_saved_accounts', JSON.stringify(accounts));
+    renderAuth();
+  } catch {}
+}
+
+function selectSavedAccount(username) {
+  switchAuthTab('login');
+  const userInp = document.getElementById('auth-username');
+  const passInp = document.getElementById('auth-password');
+  if (userInp) userInp.value = username;
+  if (passInp) {
+    passInp.value = '';
+    passInp.focus();
+  }
+}
+
 // AUTH GÖRÜNÜMÜ
 function renderAuth() {
+  const savedAccounts = getDeviceSavedAccounts();
+
   document.getElementById('app-root').innerHTML = `
     <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem;">
       <div class="modal-box" style="max-width: 440px; border-color: rgba(212, 175, 55, 0.3); box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
@@ -266,12 +308,12 @@ function renderAuth() {
         <form id="auth-form" onsubmit="handleAuthSubmit(event)" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 0.5rem;">
           <div class="form-group" id="fullname-group" style="display: none;">
             <label class="form-label">Adınız Soyadınız</label>
-            <input type="text" id="auth-fullname" class="form-control" placeholder="ör. Batu veya Abla" />
+            <input type="text" id="auth-fullname" class="form-control" placeholder="ör. Adınız Soyadınız" />
           </div>
 
           <div class="form-group">
             <label class="form-label">Kullanıcı Adı</label>
-            <input type="text" id="auth-username" class="form-control" placeholder="ör. batu veya abla" required autocomplete="username" />
+            <input type="text" id="auth-username" class="form-control" placeholder="ör. batu, abla veya arkadas" required autocomplete="username" />
           </div>
 
           <div class="form-group">
@@ -284,17 +326,25 @@ function renderAuth() {
           </button>
         </form>
 
-        <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; text-align: center;">
-          <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.6rem;">Hızlı Demo Girişi (Tek Tıkla Dolap Değiştir):</p>
-          <div style="display: flex; gap: 0.6rem; justify-content: center;">
-            <button class="btn btn-secondary btn-sm" onclick="quickFillAuth('batu', 'password123', 'Batu')">
-              <i class="fa-solid fa-user"></i> Batu'nun Dolabı
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="quickFillAuth('abla', 'password123', 'Abla')">
-              <i class="fa-solid fa-user-tie"></i> Abla'nın Dolabı
-            </button>
+        ${savedAccounts.length > 0 ? `
+        <div style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 0.5rem;">
+          <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.6rem; text-align: center;">Bu Cihazda Hatırlanan Hesaplar:</p>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            ${savedAccounts.map(acc => `
+              <div class="saved-account-chip" onclick="selectSavedAccount('${escapeHtml(acc.username)}')" title="Tıkla ve şifreni gir">
+                <div class="saved-account-avatar">${(acc.fullName || acc.username)[0].toUpperCase()}</div>
+                <div style="flex: 1; text-align: left;">
+                  <div style="font-weight: 600; font-size: 0.88rem; color: #fff;">${escapeHtml(acc.fullName || acc.username)}</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">@${escapeHtml(acc.username)}</div>
+                </div>
+                <button type="button" class="saved-account-remove" onclick="removeAccountFromDevice('${escapeHtml(acc.username)}', event)" title="Bu cihazdan kaldır">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            `).join('')}
           </div>
         </div>
+        ` : ''}
       </div>
     </div>
   `;
@@ -317,13 +367,6 @@ function switchAuthTab(mode) {
     : '<i class="fa-solid fa-arrow-right-to-bracket"></i> Giriş Yap';
 }
 
-function quickFillAuth(u, p, name) {
-  document.getElementById('auth-username').value = u;
-  document.getElementById('auth-password').value = p;
-  document.getElementById('auth-fullname').value = name;
-  handleAuthSubmit(new Event('submit'));
-}
-
 async function handleAuthSubmit(e) {
   e.preventDefault();
   const username = document.getElementById('auth-username').value.trim();
@@ -331,27 +374,16 @@ async function handleAuthSubmit(e) {
   const fullName = document.getElementById('auth-fullname').value.trim();
 
   try {
+    let loggedInUser;
     if (isRegisterMode) {
-      await api.register(username, password, fullName || username);
+      loggedInUser = await api.register(username, password, fullName || username);
       showToast('Hesap başarıyla oluşturuldu!', 'success');
     } else {
-      try {
-        await api.login(username, password);
-        showToast('Giriş başarılı!', 'success');
-      } catch (loginErr) {
-        // Eğer kullanıcı bulunamadıysa ve hızlı giriş tıklandıysa otomatik kayıt deneyelim
-        if (username && password.length >= 4) {
-          try {
-            await api.register(username, password, fullName || username);
-            showToast('Hesabınız oluşturuldu ve giriş yapıldı!', 'success');
-          } catch {
-            throw loginErr;
-          }
-        } else {
-          throw loginErr;
-        }
-      }
+      loggedInUser = await api.login(username, password);
+      showToast('Giriş başarılı!', 'success');
     }
+    // Sadece bu cihaza özel hatırla
+    saveAccountToDevice(username, loggedInUser.fullName || fullName || username);
     await initApp();
   } catch (err) {
     showToast(err.message, 'error');
