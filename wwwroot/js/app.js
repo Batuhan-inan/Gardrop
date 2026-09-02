@@ -103,6 +103,18 @@ const api = {
     return await res.json();
   },
 
+  async getAdminStats() {
+    const res = await this.req('/api/admin/stats');
+    if (!res.ok) throw new Error('İstatistikler alınamadı.');
+    return await res.json();
+  },
+
+  async getAdminUsers() {
+    const res = await this.req('/api/admin/users');
+    if (!res.ok) throw new Error('Kullanıcı listesi alınamadı.');
+    return await res.json();
+  },
+
   async getCategories() {
     const res = await this.req('/api/categories');
     return res.ok ? await res.json() : [];
@@ -372,6 +384,11 @@ function renderAppLayout() {
           <button class="nav-tab-btn" id="tab-btn-unworn" onclick="switchView('unworn')">
             <i class="fa-solid fa-clock-rotate-left"></i> <span>Unutulanlar</span>
           </button>
+          ${state.currentUser && state.currentUser.isAdmin ? `
+          <button class="nav-tab-btn nav-tab-admin" id="tab-btn-admin" onclick="switchView('admin')">
+            <i class="fa-solid fa-shield-halved"></i> <span>Yönetim</span>
+          </button>
+          ` : ''}
         </nav>
 
         <div class="nav-user">
@@ -558,6 +575,57 @@ function renderAppLayout() {
 
         <div id="unworn-clothes-grid" class="clothing-grid"></div>
       </section>
+
+      <!-- 5. YÖNETİM PANELİ (Sadece Admin) -->
+      ${state.currentUser && state.currentUser.isAdmin ? `
+      <section id="view-admin" class="view-section">
+        <div class="section-header">
+          <div>
+            <h1 class="section-title"><i class="fa-solid fa-shield-halved" style="color: #fbbf24; margin-right: 8px;"></i>Yönetim Paneli</h1>
+            <p class="section-subtitle">Sistemdeki tüm kullanıcılar, dolap dolulukları ve kullanım hareketleri</p>
+          </div>
+          <button class="btn btn-secondary" onclick="loadAdminData()">
+            <i class="fa-solid fa-rotate"></i> Verileri Yenile
+          </button>
+        </div>
+
+        <!-- KPI KARTLARI -->
+        <div class="kpi-grid" id="admin-kpi-container">
+          <div style="color: var(--text-muted); padding: 1rem;">İstatistikler yükleniyor...</div>
+        </div>
+
+        <!-- KULLANICI LİSTESİ TABLOSU -->
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <div>
+              <h3 style="font-size: 1.1rem; font-weight: 600; color: #fff; margin-bottom: 4px;">Kayıtlı Kullanıcılar</h3>
+              <p style="font-size: 0.82rem; color: var(--text-muted);">Sistemde kayıtlı tüm hesapların dolap ve kombin özetleri</p>
+            </div>
+            <div class="search-input-wrap" style="max-width: 320px;">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" class="search-input" placeholder="Kullanıcı veya ad ara..." oninput="handleAdminUserSearch(this.value)" />
+            </div>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Kullanıcı</th>
+                  <th>Yetki Rolü</th>
+                  <th>Dolaptaki Kıyafet</th>
+                  <th>Kayıtlı Kombin</th>
+                  <th>Kayıt Tarihi</th>
+                  <th>Son Aktivite</th>
+                </tr>
+              </thead>
+              <tbody id="admin-users-tbody">
+                <tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">Kullanıcılar yükleniyor...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      ` : ''}
     </main>
 
     <!-- KIYAFET EKLEME / DÜZENLEME MODALI -->
@@ -753,6 +821,7 @@ function switchView(viewName) {
   if (viewName === 'studio') renderStudio();
   if (viewName === 'outfits') loadOutfits();
   if (viewName === 'unworn') loadUnwornView();
+  if (viewName === 'admin') loadAdminData();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -1455,5 +1524,164 @@ async function handleChangePassword(e) {
   }
 }
 
+// ==========================================================================
+// YÖNETİM PANELİ (ADMIN DASHBOARD)
+// ==========================================================================
+let adminState = {
+  stats: null,
+  users: [],
+  search: ''
+};
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+async function loadAdminData() {
+  const kpiContainer = document.getElementById('admin-kpi-container');
+  const tbody = document.getElementById('admin-users-tbody');
+  
+  if (kpiContainer) {
+    kpiContainer.innerHTML = '<div style="color: var(--text-muted); padding: 1rem;"><i class="fa-solid fa-spinner fa-spin"></i> İstatistikler yükleniyor...</div>';
+  }
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> Kullanıcılar yükleniyor...</td></tr>';
+  }
+
+  try {
+    const [stats, users] = await Promise.all([
+      api.getAdminStats(),
+      api.getAdminUsers()
+    ]);
+    adminState.stats = stats;
+    adminState.users = users;
+    renderAdminContent();
+  } catch (err) {
+    showToast(err.message || 'Yönetim verileri yüklenirken hata oluştu', 'error');
+  }
+}
+
+function handleAdminUserSearch(query) {
+  adminState.search = (query || '').toLowerCase().trim();
+  renderAdminUsersTable();
+}
+
+function renderAdminContent() {
+  const stats = adminState.stats;
+  const kpiContainer = document.getElementById('admin-kpi-container');
+  if (kpiContainer && stats) {
+    kpiContainer.innerHTML = `
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;">
+          <i class="fa-solid fa-users"></i>
+        </div>
+        <div class="kpi-info">
+          <span class="kpi-label">Kayıtlı Kullanıcı</span>
+          <span class="kpi-value">${stats.totalUsers}</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">
+          <i class="fa-solid fa-shirt"></i>
+        </div>
+        <div class="kpi-info">
+          <span class="kpi-label">Toplam Kıyafet</span>
+          <span class="kpi-value">${stats.totalClothes}</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+        </div>
+        <div class="kpi-info">
+          <span class="kpi-label">Kayıtlı Kombinler</span>
+          <span class="kpi-value">${stats.totalOutfits}</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background: rgba(236, 72, 153, 0.15); color: #f472b6;">
+          <i class="fa-solid fa-fire"></i>
+        </div>
+        <div class="kpi-info">
+          <span class="kpi-label">Toplam Giyim Hareketi</span>
+          <span class="kpi-value">${stats.totalWornCount}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  renderAdminUsersTable();
+}
+
+function renderAdminUsersTable() {
+  const tbody = document.getElementById('admin-users-tbody');
+  if (!tbody) return;
+
+  const filtered = adminState.users.filter(u => {
+    if (!adminState.search) return true;
+    return (u.username && u.username.toLowerCase().includes(adminState.search)) ||
+           (u.fullName && u.fullName.toLowerCase().includes(adminState.search));
+  });
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+          Aradığınız kriterlere uygun kullanıcı bulunamadı.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(user => {
+    const createdDate = new Date(user.createdAt).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const lastActive = user.lastActiveDate 
+      ? new Date(user.lastActiveDate).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      : '<span style="color: var(--text-muted); font-size: 0.8rem;">Henüz yok</span>';
+
+    return `
+      <tr>
+        <td>
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div class="admin-user-avatar">${(user.fullName || user.username)[0].toUpperCase()}</div>
+            <div>
+              <div style="font-weight: 600; color: #fff;">${escapeHtml(user.fullName || user.username)}</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">@${escapeHtml(user.username)}</div>
+            </div>
+          </div>
+        </td>
+        <td>
+          ${user.isAdmin 
+            ? '<span class="role-badge role-admin"><i class="fa-solid fa-shield-halved"></i> Yönetici</span>' 
+            : '<span class="role-badge role-user"><i class="fa-solid fa-user"></i> Kullanıcı</span>'}
+        </td>
+        <td>
+          <span class="count-pill"><i class="fa-solid fa-shirt"></i> ${user.clothingCount} parça</span>
+        </td>
+        <td>
+          <span class="count-pill"><i class="fa-solid fa-wand-magic-sparkles"></i> ${user.outfitCount} kombin</span>
+        </td>
+        <td style="color: var(--text-muted); font-size: 0.85rem;">
+          ${createdDate}
+        </td>
+        <td style="color: var(--text-muted); font-size: 0.85rem;">
+          ${lastActive}
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
 // Uygulamayı başlat
 document.addEventListener('DOMContentLoaded', initApp);
+

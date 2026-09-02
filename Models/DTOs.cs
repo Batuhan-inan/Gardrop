@@ -42,3 +42,23 @@ public record FilterClothingRequest(
     bool? OnlyUnworn,
     bool? OnlyFavorites
 );
+
+public class AdminUserSummaryDto
+{
+    public int Id { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public bool IsAdmin { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public int ClothingCount { get; set; }
+    public int OutfitCount { get; set; }
+    public string? LastActiveDate { get; set; }
+}
+
+public class AdminStatsDto
+{
+    public int TotalUsers { get; set; }
+    public int TotalClothes { get; set; }
+    public int TotalOutfits { get; set; }
+    public int TotalWornCount { get; set; }
+}

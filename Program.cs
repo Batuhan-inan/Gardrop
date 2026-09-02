@@ -105,13 +105,14 @@ authGroup.MapPost("/register", async (
     {
         new(ClaimTypes.NameIdentifier, user.Id.ToString()),
         new(ClaimTypes.Name, user.Username),
-        new("FullName", user.FullName)
+        new("FullName", user.FullName),
+        new(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User")
     };
 
     var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
     await httpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
 
-    return Results.Ok(new { id = user.Id, username = user.Username, fullName = user.FullName });
+    return Results.Ok(new { id = user.Id, username = user.Username, fullName = user.FullName, isAdmin = user.IsAdmin });
 });
 
 authGroup.MapPost("/login", async (
@@ -130,13 +131,14 @@ authGroup.MapPost("/login", async (
     {
         new(ClaimTypes.NameIdentifier, user.Id.ToString()),
         new(ClaimTypes.Name, user.Username),
-        new("FullName", user.FullName)
+        new("FullName", user.FullName),
+        new(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User")
     };
 
     var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
     await httpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
 
-    return Results.Ok(new { id = user.Id, username = user.Username, fullName = user.FullName });
+    return Results.Ok(new { id = user.Id, username = user.Username, fullName = user.FullName, isAdmin = user.IsAdmin });
 });
 
 authGroup.MapPost("/logout", async (HttpContext httpContext) =>
@@ -154,7 +156,8 @@ authGroup.MapGet("/me", (ClaimsPrincipal user) =>
     {
         id = userId,
         username = user.FindFirst(ClaimTypes.Name)?.Value,
-        fullName = user.FindFirst("FullName")?.Value
+        fullName = user.FindFirst("FullName")?.Value,
+        isAdmin = user.IsInRole("Admin")
     });
 }).RequireAuthorization();
 
@@ -180,17 +183,20 @@ authGroup.MapPut("/profile", async (
     var success = await userRepo.UpdateProfileAsync(userId, request.Username, fullName);
     if (!success) return Results.StatusCode(500);
 
+    var isAdmin = userPrincipal.IsInRole("Admin");
+
     // Oturum çerezini güncelle
     var claims = new List<Claim>
     {
         new(ClaimTypes.NameIdentifier, userId.ToString()),
         new(ClaimTypes.Name, request.Username.Trim()),
-        new("FullName", fullName)
+        new("FullName", fullName),
+        new(ClaimTypes.Role, isAdmin ? "Admin" : "User")
     };
     var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
     await httpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
 
-    return Results.Ok(new { id = userId, username = request.Username.Trim(), fullName });
+    return Results.Ok(new { id = userId, username = request.Username.Trim(), fullName, isAdmin });
 }).RequireAuthorization();
 
 authGroup.MapPut("/change-password", async (
@@ -434,6 +440,24 @@ outfitGroup.MapPost("/{id:int}/worn", async (int id, OutfitRepository repo, Clai
     var userId = GetUserId(user);
     var success = await repo.MarkAsWornAsync(id, userId);
     return success ? Results.Ok(new { message = "Kombin giyildi olarak işaretlendi ve kıyafetlerin son giyilme tarihleri güncellendi." }) : Results.NotFound();
+});
+#endregion
+
+#region ADMIN ENDPOINTS
+var adminGroup = app.MapGroup("/api/admin").RequireAuthorization();
+
+adminGroup.MapGet("/stats", async (UserRepository userRepo, ClaimsPrincipal user) =>
+{
+    if (!user.IsInRole("Admin")) return Results.Forbid();
+    var stats = await userRepo.GetSystemStatsAsync();
+    return Results.Ok(stats);
+});
+
+adminGroup.MapGet("/users", async (UserRepository userRepo, ClaimsPrincipal user) =>
+{
+    if (!user.IsInRole("Admin")) return Results.Forbid();
+    var users = await userRepo.GetAllUsersWithStatsAsync();
+    return Results.Ok(users);
 });
 #endregion
 

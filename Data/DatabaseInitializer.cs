@@ -37,6 +37,7 @@ public class DatabaseInitializer
                 Username TEXT UNIQUE NOT NULL COLLATE NOCASE,
                 PasswordHash TEXT NOT NULL,
                 FullName TEXT NOT NULL,
+                IsAdmin INTEGER NOT NULL DEFAULT 0,
                 CreatedAt TEXT NOT NULL
             );
 
@@ -103,5 +104,18 @@ public class DatabaseInitializer
             ";
             connection.Execute(insertCategoriesSql);
         }
+
+        // Var olan veritabanlarında IsAdmin sütunu yoksa ekle (Migration)
+        try
+        {
+            connection.Execute("ALTER TABLE Users ADD COLUMN IsAdmin INTEGER NOT NULL DEFAULT 0;");
+        }
+        catch
+        {
+            // Sütun zaten varsa hata vermez, devam eder
+        }
+
+        // 'batu' kullanıcısını veya ilk kullanıcıyı Admin yap
+        connection.Execute("UPDATE Users SET IsAdmin = 1 WHERE Username = 'batu' OR Id = 1;");
     }
 }
