@@ -127,6 +127,17 @@ const api = {
     return await res.json();
   },
 
+  async adminDeleteUser(userId) {
+    const res = await this.req(`/api/admin/users/${userId}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Kullanıcı silinemedi.');
+    }
+    return await res.json();
+  },
+
   async getCategories() {
     const res = await this.req('/api/categories');
     return res.ok ? await res.json() : [];
@@ -1753,13 +1764,33 @@ function renderAdminUsersTable() {
           ${lastActive}
         </td>
         <td style="text-align: right;">
-          <button class="btn btn-secondary btn-sm" onclick="openAdminResetPasswordModal(${user.id}, '${escapeHtml(user.username)}', '${escapeHtml(user.fullName || user.username)}')" title="Şifre Belirle">
-            <i class="fa-solid fa-key" style="color: var(--accent-gold);"></i> Şifre Değiştir
-          </button>
+          <div style="display: flex; gap: 0.4rem; justify-content: flex-end; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" onclick="openAdminResetPasswordModal(${user.id}, '${escapeHtml(user.username)}', '${escapeHtml(user.fullName || user.username)}')" title="Şifre Belirle">
+              <i class="fa-solid fa-key" style="color: var(--accent-gold);"></i> Şifre Değiştir
+            </button>
+            ${user.username.toLowerCase() !== 'admin' && user.id !== state.currentUser?.id ? `
+            <button class="btn btn-danger btn-sm" onclick="handleAdminDeleteUser(${user.id}, '${escapeHtml(user.fullName || user.username)}', '${escapeHtml(user.username)}')" title="Kullanıcıyı ve dolabını sil">
+              <i class="fa-solid fa-trash"></i> Sil
+            </button>
+            ` : ''}
+          </div>
         </td>
       </tr>
     `;
   }).join('');
+}
+
+async function handleAdminDeleteUser(userId, fullName, username) {
+  const confirmed = confirm(`DİKKAT: "${fullName} (@${username})" kullanıcısını ve bu kullanıcıya ait TÜM dolap/kombin verilerini kalıcı olarak silmek istediğinize emin misiniz?`);
+  if (!confirmed) return;
+
+  try {
+    const res = await api.adminDeleteUser(userId);
+    showToast(res.message || 'Kullanıcı başarıyla silindi!', 'success');
+    await loadAdminData();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 }
 
 function openAdminResetPasswordModal(userId, username, fullName) {

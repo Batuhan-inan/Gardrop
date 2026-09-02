@@ -118,4 +118,13 @@ public class UserRepository
         ";
         return await conn.QuerySingleAsync<AdminStatsDto>(sql);
     }
+
+    public async Task<bool> DeleteUserAsync(int id)
+    {
+        using var conn = _db.CreateConnection();
+        conn.Execute("PRAGMA foreign_keys = ON;");
+        const string sql = "DELETE FROM Users WHERE Id = @Id;";
+        var rows = await conn.ExecuteAsync(sql, new { Id = id });
+        return rows > 0;
+    }
 }

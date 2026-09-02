@@ -480,6 +480,30 @@ adminGroup.MapPut("/users/{id:int}/password", async (
         ? Results.Ok(new { message = $"{targetUser.FullName} (@{targetUser.Username}) kullanıcısının şifresi başarıyla güncellendi." })
         : Results.StatusCode(500);
 });
+
+adminGroup.MapDelete("/users/{id:int}", async (
+    int id,
+    UserRepository userRepo,
+    ClaimsPrincipal user) =>
+{
+    if (!user.IsInRole("Admin")) return Results.Forbid();
+
+    var currentUserId = GetUserId(user);
+    if (id == currentUserId)
+        return Results.BadRequest(new { message = "Kendi hesabınızı silemezsiniz." });
+
+    var targetUser = await userRepo.GetByIdAsync(id);
+    if (targetUser == null) return Results.NotFound(new { message = "Kullanıcı bulunamadı." });
+
+    // Ana sistem admininin silinmesini engelle
+    if (targetUser.Username.ToLower() == "admin")
+        return Results.BadRequest(new { message = "Ana sistem 'admin' hesabı silinemez." });
+
+    var success = await userRepo.DeleteUserAsync(id);
+    return success 
+        ? Results.Ok(new { message = $"{targetUser.FullName} (@{targetUser.Username}) hesabı ve tüm dolap verileri başarıyla silindi." })
+        : Results.StatusCode(500);
+});
 #endregion
 
 app.Run();
