@@ -19,7 +19,7 @@ COPY --from=build /app/publish .
 
 # Çalışma ortamı ayarları
 ENV ASPNETCORE_ENVIRONMENT=Production
-ENV PORT=8080
-EXPOSE 8080
+ENV PORT=10000
+EXPOSE 10000
 
 ENTRYPOINT ["dotnet", "GardiropApp.dll"]

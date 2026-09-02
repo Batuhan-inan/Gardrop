@@ -48,7 +48,7 @@ public class DbConnectionFactory
             var password = userInfo.Length > 1 ? userInfo[1] : "";
             var database = uri.AbsolutePath.TrimStart('/');
             var port = uri.Port > 0 ? uri.Port : 5432;
-            return $"Host={uri.Host};Port={port};Username={user};Password={password};Database={database};SSL Mode=Require;Trust Server Certificate=true;";
+            return $"Host={uri.Host};Port={port};Username={user};Password={password};Database={database};SSL Mode=Prefer;Trust Server Certificate=true;";
         }
         return url;
     }
