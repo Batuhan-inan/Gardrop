@@ -1,4 +1,4 @@
-using Dapper;
+﻿using Dapper;
 using GardiropApp.Data;
 using GardiropApp.Models;
 
@@ -122,10 +122,6 @@ public class UserRepository
     public async Task<bool> DeleteUserAsync(int id)
     {
         using var conn = _db.CreateConnection();
-        if (!_db.IsPostgres)
-        {
-            try { conn.Execute("PRAGMA foreign_keys = ON;"); } catch {}
-        }
         const string sql = "DELETE FROM Users WHERE Id = @Id;";
         var rows = await conn.ExecuteAsync(sql, new { Id = id });
         return rows > 0;

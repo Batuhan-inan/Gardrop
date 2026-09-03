@@ -1,4 +1,4 @@
-using Dapper;
+﻿using Dapper;
 using GardiropApp.Services;
 
 namespace GardiropApp.Data;
@@ -29,130 +29,64 @@ public class DatabaseInitializer
             connection.Open();
         }
 
-        if (!_db.IsPostgres)
-        {
-            try
-            {
-                connection.Execute("PRAGMA foreign_keys = ON;");
-            }
-            catch {}
-        }
+        // Tabloları oluştur (PostgreSQL)
+        const string createTablesSql = @"
+            CREATE TABLE IF NOT EXISTS Users (
+                Id SERIAL PRIMARY KEY,
+                Username TEXT UNIQUE NOT NULL,
+                PasswordHash TEXT NOT NULL,
+                FullName TEXT NOT NULL,
+                IsAdmin INTEGER NOT NULL DEFAULT 0,
+                CreatedAt TEXT NOT NULL
+            );
 
-        // Tabloları oluştur
-        string createTablesSql;
-        if (_db.IsPostgres)
-        {
-            createTablesSql = @"
-                CREATE TABLE IF NOT EXISTS Users (
-                    Id SERIAL PRIMARY KEY,
-                    Username TEXT UNIQUE NOT NULL,
-                    PasswordHash TEXT NOT NULL,
-                    FullName TEXT NOT NULL,
-                    IsAdmin INTEGER NOT NULL DEFAULT 0,
-                    CreatedAt TEXT NOT NULL
-                );
+            CREATE TABLE IF NOT EXISTS Categories (
+                Id SERIAL PRIMARY KEY,
+                Name TEXT NOT NULL,
+                Slug TEXT NOT NULL UNIQUE,
+                Icon TEXT NOT NULL,
+                DisplayOrder INTEGER NOT NULL
+            );
 
-                CREATE TABLE IF NOT EXISTS Categories (
-                    Id SERIAL PRIMARY KEY,
-                    Name TEXT NOT NULL,
-                    Slug TEXT NOT NULL UNIQUE,
-                    Icon TEXT NOT NULL,
-                    DisplayOrder INTEGER NOT NULL
-                );
+            CREATE TABLE IF NOT EXISTS ClothingItems (
+                Id SERIAL PRIMARY KEY,
+                UserId INTEGER NOT NULL REFERENCES Users(Id) ON DELETE CASCADE,
+                Name TEXT NOT NULL,
+                CategoryId INTEGER NOT NULL REFERENCES Categories(Id),
+                Color TEXT NOT NULL,
+                ColorHex TEXT,
+                Season TEXT NOT NULL,
+                ImageUrl TEXT NOT NULL,
+                Brand TEXT,
+                Notes TEXT,
+                LastWornDate TEXT,
+                WearCount INTEGER NOT NULL DEFAULT 0,
+                IsFavorite INTEGER NOT NULL DEFAULT 0,
+                CreatedAt TEXT NOT NULL
+            );
 
-                CREATE TABLE IF NOT EXISTS ClothingItems (
-                    Id SERIAL PRIMARY KEY,
-                    UserId INTEGER NOT NULL REFERENCES Users(Id) ON DELETE CASCADE,
-                    Name TEXT NOT NULL,
-                    CategoryId INTEGER NOT NULL REFERENCES Categories(Id),
-                    Color TEXT NOT NULL,
-                    ColorHex TEXT,
-                    Season TEXT NOT NULL,
-                    ImageUrl TEXT NOT NULL,
-                    Brand TEXT,
-                    Notes TEXT,
-                    LastWornDate TEXT,
-                    WearCount INTEGER NOT NULL DEFAULT 0,
-                    IsFavorite INTEGER NOT NULL DEFAULT 0,
-                    CreatedAt TEXT NOT NULL
-                );
+            CREATE TABLE IF NOT EXISTS Outfits (
+                Id SERIAL PRIMARY KEY,
+                UserId INTEGER NOT NULL REFERENCES Users(Id) ON DELETE CASCADE,
+                Name TEXT NOT NULL,
+                Description TEXT,
+                LastWornDate TEXT,
+                WearCount INTEGER NOT NULL DEFAULT 0,
+                CreatedAt TEXT NOT NULL
+            );
 
-                CREATE TABLE IF NOT EXISTS Outfits (
-                    Id SERIAL PRIMARY KEY,
-                    UserId INTEGER NOT NULL REFERENCES Users(Id) ON DELETE CASCADE,
-                    Name TEXT NOT NULL,
-                    Description TEXT,
-                    LastWornDate TEXT,
-                    WearCount INTEGER NOT NULL DEFAULT 0,
-                    CreatedAt TEXT NOT NULL
-                );
+            CREATE TABLE IF NOT EXISTS OutfitItems (
+                OutfitId INTEGER NOT NULL REFERENCES Outfits(Id) ON DELETE CASCADE,
+                ClothingItemId INTEGER NOT NULL REFERENCES ClothingItems(Id) ON DELETE CASCADE,
+                PRIMARY KEY (OutfitId, ClothingItemId)
+            );
 
-                CREATE TABLE IF NOT EXISTS OutfitItems (
-                    OutfitId INTEGER NOT NULL REFERENCES Outfits(Id) ON DELETE CASCADE,
-                    ClothingItemId INTEGER NOT NULL REFERENCES ClothingItems(Id) ON DELETE CASCADE,
-                    PRIMARY KEY (OutfitId, ClothingItemId)
-                );
-            ";
-        }
-        else
-        {
-            createTablesSql = @"
-                CREATE TABLE IF NOT EXISTS Users (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Username TEXT UNIQUE NOT NULL COLLATE NOCASE,
-                    PasswordHash TEXT NOT NULL,
-                    FullName TEXT NOT NULL,
-                    IsAdmin INTEGER NOT NULL DEFAULT 0,
-                    CreatedAt TEXT NOT NULL
-                );
-
-                CREATE TABLE IF NOT EXISTS Categories (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Name TEXT NOT NULL,
-                    Slug TEXT NOT NULL UNIQUE,
-                    Icon TEXT NOT NULL,
-                    DisplayOrder INTEGER NOT NULL
-                );
-
-                CREATE TABLE IF NOT EXISTS ClothingItems (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    UserId INTEGER NOT NULL,
-                    Name TEXT NOT NULL,
-                    CategoryId INTEGER NOT NULL,
-                    Color TEXT NOT NULL,
-                    ColorHex TEXT,
-                    Season TEXT NOT NULL,
-                    ImageUrl TEXT NOT NULL,
-                    Brand TEXT,
-                    Notes TEXT,
-                    LastWornDate TEXT,
-                    WearCount INTEGER NOT NULL DEFAULT 0,
-                    IsFavorite INTEGER NOT NULL DEFAULT 0,
-                    CreatedAt TEXT NOT NULL,
-                    FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE,
-                    FOREIGN KEY (CategoryId) REFERENCES Categories(Id)
-                );
-
-                CREATE TABLE IF NOT EXISTS Outfits (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    UserId INTEGER NOT NULL,
-                    Name TEXT NOT NULL,
-                    Description TEXT,
-                    LastWornDate TEXT,
-                    WearCount INTEGER NOT NULL DEFAULT 0,
-                    CreatedAt TEXT NOT NULL,
-                    FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE
-                );
-
-                CREATE TABLE IF NOT EXISTS OutfitItems (
-                    OutfitId INTEGER NOT NULL,
-                    ClothingItemId INTEGER NOT NULL,
-                    PRIMARY KEY (OutfitId, ClothingItemId),
-                    FOREIGN KEY (OutfitId) REFERENCES Outfits(Id) ON DELETE CASCADE,
-                    FOREIGN KEY (ClothingItemId) REFERENCES ClothingItems(Id) ON DELETE CASCADE
-                );
-            ";
-        }
+            CREATE TABLE IF NOT EXISTS DataProtectionKeys (
+                Id SERIAL PRIMARY KEY,
+                FriendlyName TEXT,
+                Xml TEXT NOT NULL
+            );
+        ";
 
         connection.Execute(createTablesSql);
 

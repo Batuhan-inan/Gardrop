@@ -1,41 +1,26 @@
-using Microsoft.Data.Sqlite;
+﻿using System.Data;
 using Npgsql;
-using System.Data;
 
 namespace GardiropApp.Data;
 
 public class DbConnectionFactory
 {
     private readonly string _connectionString;
-    private readonly bool _isPostgres;
 
-    public bool IsPostgres => _isPostgres;
+    public bool IsPostgres => true;
 
     public DbConnectionFactory(IConfiguration configuration)
     {
         var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL") 
-                    ?? configuration["Postgres:ConnectionString"];
+                    ?? configuration["Postgres:ConnectionString"]
+                    ?? "postgresql://gardirop_db_user:n0UxkpeTYlbnZNAPhEMAFcqefFcY5oi8@dpg-dac27bfavr4c73b71rr0-a/gardirop_db";
 
-        if (!string.IsNullOrWhiteSpace(dbUrl))
-        {
-            _connectionString = ConvertPostgresUrlToConnectionString(dbUrl);
-            _isPostgres = true;
-        }
-        else
-        {
-            _connectionString = configuration.GetConnectionString("DefaultConnection") 
-                                ?? "Data Source=gardirop.db";
-            _isPostgres = false;
-        }
+        _connectionString = ConvertPostgresUrlToConnectionString(dbUrl);
     }
 
     public IDbConnection CreateConnection()
     {
-        if (_isPostgres)
-        {
-            return new NpgsqlConnection(_connectionString);
-        }
-        return new SqliteConnection(_connectionString);
+        return new NpgsqlConnection(_connectionString);
     }
 
     private static string ConvertPostgresUrlToConnectionString(string url)
@@ -48,7 +33,8 @@ public class DbConnectionFactory
             var password = userInfo.Length > 1 ? userInfo[1] : "";
             var database = uri.AbsolutePath.TrimStart('/');
             var port = uri.Port > 0 ? uri.Port : 5432;
-            return $"Host={uri.Host};Port={port};Username={user};Password={password};Database={database};SSL Mode=Prefer;Trust Server Certificate=true;";
+            var sslMode = uri.Host.Contains(".render.com") ? "Require" : "Prefer";
+            return $"Host={uri.Host};Port={port};Username={user};Password={password};Database={database};SSL Mode={sslMode};Trust Server Certificate=true;";
         }
         return url;
     }

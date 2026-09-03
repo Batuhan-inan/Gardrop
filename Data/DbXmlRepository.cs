@@ -11,38 +11,6 @@ public class DbXmlRepository : IXmlRepository
     public DbXmlRepository(DbConnectionFactory db)
     {
         _db = db;
-        EnsureTableCreated();
-    }
-
-    private void EnsureTableCreated()
-    {
-        try
-        {
-            using var conn = _db.CreateConnection();
-            string sql;
-            if (_db.IsPostgres)
-            {
-                sql = @"
-                    CREATE TABLE IF NOT EXISTS DataProtectionKeys (
-                        Id SERIAL PRIMARY KEY,
-                        FriendlyName TEXT,
-                        Xml TEXT NOT NULL
-                    );
-                ";
-            }
-            else
-            {
-                sql = @"
-                    CREATE TABLE IF NOT EXISTS DataProtectionKeys (
-                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        FriendlyName TEXT,
-                        Xml TEXT NOT NULL
-                    );
-                ";
-            }
-            conn.Execute(sql);
-        }
-        catch { }
     }
 
     public IReadOnlyCollection<XElement> GetAllElements()
