@@ -701,20 +701,38 @@ function renderAppLayout() {
         <form id="clothing-form" onsubmit="handleSaveClothing(event)" style="display: flex; flex-direction: column; gap: 1rem;">
           <!-- FOTOĞRAF ALANI -->
           <div class="form-group">
-            <label class="form-label">Kıyafet Fotoğrafı (Telefondan çek veya seç)</label>
-            <div class="upload-area" id="upload-dropzone" onclick="triggerFileInput()">
-              <i class="fa-solid fa-camera upload-icon"></i>
-              <div style="font-size: 0.9rem; font-weight: 600;">Fotoğraf Çek veya Yükle</div>
-              <div style="font-size: 0.78rem; color: var(--text-muted);">JPG, PNG, WEBP (Maks 10 MB)</div>
-              <!-- Gizli file input: Hem kamera hem galeri destekler -->
-              <input type="file" id="clothing-file-input" accept="image/*" capture="environment" style="display: none;" onchange="handleFileSelected(this.files)" />
+            <label class="form-label">Kıyafet Fotoğrafı</label>
+            
+            <!-- Gizli Inputlar: Biri Kamera İçin (capture), Diğeri Galeri İçin (capturesiz) -->
+            <input type="file" id="clothing-camera-input" accept="image/*" capture="environment" style="display: none;" onchange="handleFileSelected(this.files)" />
+            <input type="file" id="clothing-gallery-input" accept="image/*" style="display: none;" onchange="handleFileSelected(this.files)" />
+            
+            <!-- Yükleme Seçim Alanı -->
+            <div class="upload-choice-container" id="upload-dropzone">
+              <div class="upload-choice-buttons">
+                <button type="button" class="btn-upload-choice" onclick="triggerGalleryInput()">
+                  <i class="fa-solid fa-images"></i>
+                  <span>Galeriden Seç</span>
+                </button>
+                <button type="button" class="btn-upload-choice" onclick="triggerCameraInput()">
+                  <i class="fa-solid fa-camera"></i>
+                  <span>Kamera ile Çek</span>
+                </button>
+              </div>
+              <div id="upload-status-text" class="upload-hint">Fotoğraf galerisinden seçebilir veya kamerayla anında çekebilirsiniz</div>
             </div>
 
+            <!-- Önizleme Alanı -->
             <div id="upload-preview-container" style="display: none;" class="upload-preview-wrap">
               <img id="upload-preview-img" class="upload-preview" src="" alt="Önizleme" />
-              <button type="button" class="btn btn-danger btn-sm" style="position: absolute; top: 4px; right: 4px; padding: 2px 6px;" onclick="removeUploadedPhoto(event)">
-                <i class="fa-solid fa-trash"></i>
-              </button>
+              <div class="upload-preview-overlay">
+                <button type="button" class="btn-preview-action btn-change" onclick="triggerGalleryInput()" title="Fotoğrafı Değiştir">
+                  <i class="fa-solid fa-arrows-rotate"></i> Değiştir
+                </button>
+                <button type="button" class="btn-preview-action btn-remove" onclick="removeUploadedPhoto(event)" title="Fotoğrafı Kaldır">
+                  <i class="fa-solid fa-trash"></i> Kaldır
+                </button>
+              </div>
             </div>
             <input type="hidden" id="clothing-image-url" value="" />
           </div>
@@ -1120,12 +1138,30 @@ function openAddClothingModal() {
   document.getElementById('clothing-form').reset();
   document.getElementById('clothing-image-url').value = '';
   document.getElementById('upload-preview-container').style.display = 'none';
-  document.getElementById('upload-dropzone').style.display = 'flex';
+  document.getElementById('upload-dropzone').style.display = 'block';
+  const camInput = document.getElementById('clothing-camera-input');
+  const galInput = document.getElementById('clothing-gallery-input');
+  if (camInput) camInput.value = '';
+  if (galInput) galInput.value = '';
+  const statusText = document.getElementById('upload-status-text');
+  if (statusText) statusText.textContent = 'Fotoğraf galerisinden seçebilir veya kamerayla anında çekebilirsiniz';
   openModal('clothing-modal');
 }
 
-function triggerFileInput() {
-  document.getElementById('clothing-file-input').click();
+function triggerCameraInput() {
+  const input = document.getElementById('clothing-camera-input');
+  if (input) {
+    input.value = '';
+    input.click();
+  }
+}
+
+function triggerGalleryInput() {
+  const input = document.getElementById('clothing-gallery-input');
+  if (input) {
+    input.value = '';
+    input.click();
+  }
 }
 
 function pickQuickColor(name, hex) {
@@ -1133,15 +1169,71 @@ function pickQuickColor(name, hex) {
   document.getElementById('clothing-color-hex').value = hex;
 }
 
+// Telefondaki yüksek çözünürlüklü veya HEIC/ağır fotoğrafları hızlıca optimize eden sıkıştırıcı
+async function compressImageFile(file) {
+  return new Promise((resolve) => {
+    if (!file || !file.type || !file.type.startsWith('image/')) return resolve(file);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDimension = 1400; // Maksimum 1400px genişlik/yükseklik
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height && width > maxDimension) {
+          height = Math.round((height * maxDimension) / width);
+          width = maxDimension;
+        } else if (height > maxDimension) {
+          width = Math.round((width * maxDimension) / height);
+          height = maxDimension;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            resolve(file);
+            return;
+          }
+          const compressedFile = new File([blob], (file.name || "photo").replace(/\.[^/.]+$/, "") + ".jpg", {
+            type: 'image/jpeg',
+            lastModified: Date.now()
+          });
+          resolve(compressedFile);
+        }, 'image/jpeg', 0.85); // %85 kalite ile JPG çıktısı
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
 async function handleFileSelected(files) {
   if (!files || files.length === 0) return;
-  const file = files[0];
+  const rawFile = files[0];
 
+  const statusText = document.getElementById('upload-status-text');
   const dropzone = document.getElementById('upload-dropzone');
-  dropzone.innerHTML = `<i class="fa-solid fa-spinner fa-spin upload-icon"></i><div>Fotoğraf yükleniyor...</div>`;
+  
+  if (statusText) {
+    statusText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Fotoğraf işleniyor ve yükleniyor...';
+  }
 
   try {
-    const url = await api.uploadPhoto(file);
+    // 1. Telefon fotoğrafını optimize et (15MB -> ~400KB)
+    const fileToUpload = await compressImageFile(rawFile);
+    
+    // 2. Sunucuya yükle
+    const url = await api.uploadPhoto(fileToUpload);
+    
     document.getElementById('clothing-image-url').value = url;
     document.getElementById('upload-preview-img').src = url;
     document.getElementById('upload-preview-container').style.display = 'block';
@@ -1150,20 +1242,22 @@ async function handleFileSelected(files) {
   } catch (err) {
     showToast(err.message, 'error');
   } finally {
-    dropzone.innerHTML = `
-      <i class="fa-solid fa-camera upload-icon"></i>
-      <div style="font-size: 0.9rem; font-weight: 600;">Fotoğraf Çek veya Yükle</div>
-      <div style="font-size: 0.78rem; color: var(--text-muted);">JPG, PNG, WEBP (Maks 10 MB)</div>
-    `;
+    if (statusText) {
+      statusText.textContent = 'Fotoğraf galerisinden seçebilir veya kamerayla anında çekebilirsiniz';
+    }
   }
 }
 
 function removeUploadedPhoto(e) {
-  e.stopPropagation();
+  if (e) e.stopPropagation();
   document.getElementById('clothing-image-url').value = '';
   document.getElementById('upload-preview-container').style.display = 'none';
-  document.getElementById('upload-dropzone').style.display = 'flex';
-  document.getElementById('clothing-file-input').value = '';
+  document.getElementById('upload-dropzone').style.display = 'block';
+  
+  const camInput = document.getElementById('clothing-camera-input');
+  const galInput = document.getElementById('clothing-gallery-input');
+  if (camInput) camInput.value = '';
+  if (galInput) galInput.value = '';
 }
 
 async function handleSaveClothing(e) {

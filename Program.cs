@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection;
 using System.Security.Claims;
 using GardiropApp.Data;
 using GardiropApp.Models;
@@ -359,7 +359,7 @@ clothingGroup.MapPost("/upload", async (IFormFile file, IWebHostEnvironment env,
     if (file.Length > 10 * 1024 * 1024) // Maksimum 10 MB
         return Results.BadRequest(new { message = "Görsel boyutu en fazla 10 MB olabilir." });
 
-    var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+    var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic", ".heif" };
     var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
 
     if (!allowedExtensions.Contains(ext))
