@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using GardiropApp.Services;
 
 namespace GardiropApp.Data;
@@ -16,12 +16,6 @@ public class DatabaseInitializer
 
     public void Initialize()
     {
-        // Uploads dizinini oluştur
-        var uploadsPath = Path.Combine(_environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot"), "uploads");
-        if (!Directory.Exists(uploadsPath))
-        {
-            Directory.CreateDirectory(uploadsPath);
-        }
 
         using var connection = _db.CreateConnection();
         if (connection.State != System.Data.ConnectionState.Open)
@@ -85,6 +79,13 @@ public class DatabaseInitializer
                 Id SERIAL PRIMARY KEY,
                 FriendlyName TEXT,
                 Xml TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS ClothingImages (
+                Id SERIAL PRIMARY KEY,
+                Data BYTEA NOT NULL,
+                ContentType TEXT NOT NULL,
+                CreatedAt TEXT NOT NULL
             );
         ";
 

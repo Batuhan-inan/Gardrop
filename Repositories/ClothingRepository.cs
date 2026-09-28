@@ -154,6 +154,23 @@ public class ClothingRepository
     public async Task<bool> DeleteAsync(int id, int userId)
     {
         using var conn = _db.CreateConnection();
+        try
+        {
+            var imgUrl = await conn.ExecuteScalarAsync<string>(
+                "SELECT ImageUrl FROM ClothingItems WHERE Id = @Id AND UserId = @UserId;",
+                new { Id = id, UserId = userId });
+
+            if (!string.IsNullOrEmpty(imgUrl) && imgUrl.StartsWith("/api/images/"))
+            {
+                var idStr = imgUrl.Replace("/api/images/", "");
+                if (int.TryParse(idStr, out var imageId))
+                {
+                    await conn.ExecuteAsync("DELETE FROM ClothingImages WHERE Id = @Id;", new { Id = imageId });
+                }
+            }
+        }
+        catch { }
+
         const string sql = "DELETE FROM ClothingItems WHERE Id = @Id AND UserId = @UserId;";
         var rows = await conn.ExecuteAsync(sql, new { Id = id, UserId = userId });
         return rows > 0;

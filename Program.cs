@@ -1,3 +1,4 @@
+using Dapper;
 using Microsoft.AspNetCore.DataProtection;
 using System.Security.Claims;
 using GardiropApp.Data;
@@ -351,7 +352,7 @@ clothingGroup.MapPost("/{id:int}/worn", async (int id, ClothingRepository repo, 
 });
 
 // Dosya / Fotoğraf Yükleme Uç Noktası (Mobil kamera & galeriden gelen görseller)
-clothingGroup.MapPost("/upload", async (IFormFile file, IWebHostEnvironment env, CloudinaryService cloudinaryService) =>
+clothingGroup.MapPost("/upload", async (IFormFile file, DbConnectionFactory db) =>
 {
     if (file == null || file.Length == 0)
         return Results.BadRequest(new { message = "Lütfen geçerli bir görsel dosyası seçin." });
@@ -363,34 +364,49 @@ clothingGroup.MapPost("/upload", async (IFormFile file, IWebHostEnvironment env,
     var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
 
     if (!allowedExtensions.Contains(ext))
-        return Results.BadRequest(new { message = "Yalnızca JPG, PNG, WEBP ve GIF formatları desteklenmektedir." });
+        return Results.BadRequest(new { message = "Yalnızca JPG, PNG, WEBP, GIF ve HEIC formatları desteklenmektedir." });
 
-    // 1. Cloudinary yapılandırılmışsa doğrudan buluta yükle
-    if (cloudinaryService.IsConfigured)
+    var contentType = file.ContentType;
+    if (string.IsNullOrWhiteSpace(contentType) || !contentType.StartsWith("image/"))
     {
-        var cloudUrl = await cloudinaryService.UploadAsync(file);
-        if (!string.IsNullOrEmpty(cloudUrl))
+        contentType = ext switch
         {
-            return Results.Ok(new { url = cloudUrl });
-        }
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            ".gif" => "image/gif",
+            _ => "image/jpeg"
+        };
     }
 
-    // 2. Yedek: Yerel diske kaydet (Geliştirme veya Cloudinary kapalıysa)
-    var uploadsFolder = Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), "uploads");
-    if (!Directory.Exists(uploadsFolder))
-        Directory.CreateDirectory(uploadsFolder);
+    using var memoryStream = new MemoryStream();
+    await file.CopyToAsync(memoryStream);
+    var bytes = memoryStream.ToArray();
 
-    var uniqueFileName = $"{Guid.NewGuid():N}{ext}";
-    var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+    using var conn = db.CreateConnection();
+    var imageId = await conn.ExecuteScalarAsync<int>(@"
+        INSERT INTO ClothingImages (Data, ContentType, CreatedAt)
+        VALUES (@Data, @ContentType, @CreatedAt)
+        RETURNING Id;",
+        new { Data = bytes, ContentType = contentType, CreatedAt = DateTime.UtcNow.ToString("o") });
 
-    using (var stream = new FileStream(filePath, FileMode.Create))
-    {
-        await file.CopyToAsync(stream);
-    }
-
-    var relativeUrl = $"/uploads/{uniqueFileName}";
-    return Results.Ok(new { url = relativeUrl });
+    return Results.Ok(new { url = $"/api/images/{imageId}" });
 }).DisableAntiforgery();
+
+// Veritabanından Fotoğraf Sunma (Kalıcı PostgreSQL)
+app.MapGet("/api/images/{id:int}", async (int id, DbConnectionFactory db, HttpContext httpContext) =>
+{
+    using var conn = db.CreateConnection();
+    var record = await conn.QueryFirstOrDefaultAsync<(byte[]? Data, string? ContentType)>(
+        "SELECT Data, ContentType FROM ClothingImages WHERE Id = @Id;",
+        new { Id = id });
+
+    if (record.Data == null || record.Data.Length == 0)
+        return Results.NotFound();
+
+    var contentType = record.ContentType ?? "image/jpeg";
+    httpContext.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+    return Results.File(record.Data, contentType);
+});
 #endregion
 
 #region OUTFIT ENDPOINTS

@@ -175,6 +175,15 @@ const api = {
     return data.url;
   },
 
+  async updateClothing(id, item) {
+    const res = await this.req('/api/clothes/' + id, {
+      method: 'PUT',
+      body: JSON.stringify(item)
+    });
+    if (!res.ok) throw new Error('Kıyafet güncellenemedi.');
+    return await res.json();
+  },
+
   async createClothing(item) {
     const res = await this.req('/api/clothes', {
       method: 'POST',
@@ -699,6 +708,7 @@ function renderAppLayout() {
         </div>
 
         <form id="clothing-form" onsubmit="handleSaveClothing(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+          <input type="hidden" id="clothing-edit-id" value="" />
           <!-- FOTOĞRAF ALANI -->
           <div class="form-group">
             <label class="form-label">Kıyafet Fotoğrafı</label>
@@ -1094,6 +1104,9 @@ async function loadWardrobe() {
           <button class="btn btn-secondary btn-sm" style="flex: 1;" onclick="sendToStudio(${item.id})" title="Bu parçayla kombin yap">
             <i class="fa-solid fa-wand-magic-sparkles"></i> Kombinle
           </button>
+          <button class="btn btn-secondary btn-sm" onclick="openEditClothingModal(${item.id})" title="Kıyafeti ve Fotoğrafı Düzenle">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
           <button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id})" title="Sil">
             <i class="fa-solid fa-trash-can"></i>
           </button>
@@ -1136,6 +1149,7 @@ async function deleteItem(id) {
 function openAddClothingModal() {
   document.getElementById('clothing-modal-title').textContent = 'Yeni Kıyafet Ekle';
   document.getElementById('clothing-form').reset();
+  document.getElementById('clothing-edit-id').value = '';
   document.getElementById('clothing-image-url').value = '';
   document.getElementById('upload-preview-container').style.display = 'none';
   document.getElementById('upload-dropzone').style.display = 'block';
@@ -1145,6 +1159,47 @@ function openAddClothingModal() {
   if (galInput) galInput.value = '';
   const statusText = document.getElementById('upload-status-text');
   if (statusText) statusText.textContent = 'Fotoğraf galerisinden seçebilir veya kamerayla anında çekebilirsiniz';
+  const saveBtn = document.getElementById('save-clothing-btn');
+  if (saveBtn) saveBtn.textContent = 'Kaydet';
+  openModal('clothing-modal');
+}
+
+function openEditClothingModal(id) {
+  const item = state.clothes.find(c => c.id === id);
+  if (!item) return;
+
+  document.getElementById('clothing-modal-title').textContent = 'Kıyafeti Düzenle';
+  document.getElementById('clothing-edit-id').value = item.id;
+  document.getElementById('clothing-name').value = item.name;
+  document.getElementById('clothing-category').value = item.categoryId;
+  document.getElementById('clothing-season').value = item.season;
+  document.getElementById('clothing-color').value = item.color;
+  document.getElementById('clothing-color-hex').value = item.colorHex || '#111827';
+  document.getElementById('clothing-brand').value = item.brand || '';
+  document.getElementById('clothing-notes').value = item.notes || '';
+  document.getElementById('clothing-image-url').value = item.imageUrl || '';
+
+  const camInput = document.getElementById('clothing-camera-input');
+  const galInput = document.getElementById('clothing-gallery-input');
+  if (camInput) camInput.value = '';
+  if (galInput) galInput.value = '';
+
+  const previewContainer = document.getElementById('upload-preview-container');
+  const previewImg = document.getElementById('upload-preview-img');
+  const dropzone = document.getElementById('upload-dropzone');
+
+  if (item.imageUrl && !item.imageUrl.includes('placeholder.svg')) {
+    previewImg.src = item.imageUrl;
+    previewContainer.style.display = 'block';
+    dropzone.style.display = 'none';
+  } else {
+    previewContainer.style.display = 'none';
+    dropzone.style.display = 'block';
+  }
+
+  const saveBtn = document.getElementById('save-clothing-btn');
+  if (saveBtn) saveBtn.textContent = 'Güncelle';
+
   openModal('clothing-modal');
 }
 
@@ -1262,6 +1317,7 @@ function removeUploadedPhoto(e) {
 
 async function handleSaveClothing(e) {
   e.preventDefault();
+  const editId = document.getElementById('clothing-edit-id').value;
   const name = document.getElementById('clothing-name').value.trim();
   const categoryId = parseInt(document.getElementById('clothing-category').value);
   const color = document.getElementById('clothing-color').value.trim();
@@ -1276,25 +1332,40 @@ async function handleSaveClothing(e) {
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Kaydediliyor...';
 
   try {
-    await api.createClothing({
-      name,
-      categoryId,
-      color,
-      colorHex,
-      season,
-      imageUrl: imageUrl || '/images/placeholder.svg',
-      brand,
-      notes
-    });
+    if (editId) {
+      await api.updateClothing(parseInt(editId), {
+        name,
+        categoryId,
+        color,
+        colorHex,
+        season,
+        imageUrl: imageUrl || '/images/placeholder.svg',
+        brand,
+        notes,
+        isFavorite: false
+      });
+      showToast('Kıyafet ve fotoğraf güncellendi!', 'success');
+    } else {
+      await api.createClothing({
+        name,
+        categoryId,
+        color,
+        colorHex,
+        season,
+        imageUrl: imageUrl || '/images/placeholder.svg',
+        brand,
+        notes
+      });
+      showToast('Kıyafet gardırobuna eklendi!', 'success');
+    }
 
     closeModal('clothing-modal');
-    showToast('Kıyafet gardırobuna eklendi!', 'success');
     await loadWardrobe();
   } catch (err) {
     showToast(err.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = 'Kaydet';
+    btn.textContent = editId ? 'Güncelle' : 'Kaydet';
   }
 }
 
