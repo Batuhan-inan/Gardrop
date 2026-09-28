@@ -923,6 +923,17 @@ function renderAppLayout() {
         </form>
       </div>
     </div>
+
+    <!-- TAM EKRAN FOTOĞRAF GÖRÜNTÜLEYİCİ (LIGHTBOX) -->
+    <div id="image-lightbox" class="lightbox-backdrop" onclick="closeLightbox(event)">
+      <div class="lightbox-content" onclick="event.stopPropagation()">
+        <button class="lightbox-close-btn" onclick="closeLightbox(event)" title="Kapat">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        <img id="lightbox-img" src="" alt="Tam Ekran Kıyafet Fotoğrafı" />
+        <div id="lightbox-caption" class="lightbox-caption"></div>
+      </div>
+    </div>
   `;
 }
 
@@ -1071,10 +1082,10 @@ async function loadWardrobe() {
 
   grid.innerHTML = state.clothes.map(item => `
     <div class="clothing-card">
-      <div class="card-img-wrap">
+      <div class="card-img-wrap" onclick="openLightboxById(${item.id})">
         <img src="${item.imageUrl}" class="card-img" alt="${item.name}" onerror="this.src='/images/placeholder.svg'" />
         <span class="card-badge">${item.categoryName}</span>
-        <button class="card-fav-btn ${item.isFavorite ? 'active' : ''}" onclick="toggleFav(${item.id})" title="Favori">
+        <button class="card-fav-btn ${item.isFavorite ? 'active' : ''}" onclick="toggleFav(${item.id}, event)" title="Favori">
           <i class="fa-${item.isFavorite ? 'solid' : 'regular'} fa-heart"></i>
         </button>
       </div>
@@ -1127,7 +1138,8 @@ function formatLastWorn(dateStr) {
 }
 
 // KART AKSİYONLARI
-async function toggleFav(id) {
+async function toggleFav(id, e) {
+  if (e) e.stopPropagation();
   await api.toggleFavorite(id);
   loadWardrobe();
 }
@@ -1482,7 +1494,7 @@ function renderStudioClothes() {
 
   grid.innerHTML = items.map(item => `
     <div class="clothing-card" style="font-size: 0.85rem;">
-      <div class="card-img-wrap" style="aspect-ratio: 1 / 1;">
+      <div class="card-img-wrap" style="aspect-ratio: 1 / 1;" onclick="openLightboxById(${item.id})">
         <img src="${item.imageUrl}" class="card-img" alt="${item.name}" onerror="this.src='/images/placeholder.svg'" />
         <span class="card-badge">${item.categoryName}</span>
       </div>
@@ -1670,7 +1682,7 @@ async function loadUnwornView() {
 
   grid.innerHTML = unwornItems.map(item => `
     <div class="clothing-card">
-      <div class="card-img-wrap">
+      <div class="card-img-wrap" onclick="openLightboxById(${item.id})">
         <img src="${item.imageUrl}" class="card-img" alt="${item.name}" onerror="this.src='/images/placeholder.svg'" />
         <span class="card-badge" style="background: rgba(239, 68, 68, 0.85); color: white;">Unutulmuş</span>
       </div>
@@ -2000,3 +2012,43 @@ async function handleAdminResetPasswordSubmit(e) {
 // Uygulamayı başlat
 document.addEventListener('DOMContentLoaded', initApp);
 
+
+
+// LIGHTBOX (TAM EKRAN FOTOĞRAF GÖRÜNTÜLEYİCİ)
+function openLightbox(imageUrl, title) {
+  if (!imageUrl || imageUrl.includes('placeholder.svg')) return;
+  const lb = document.getElementById('image-lightbox');
+  const img = document.getElementById('lightbox-img');
+  const caption = document.getElementById('lightbox-caption');
+
+  if (lb && img) {
+    img.src = imageUrl;
+    if (caption) caption.textContent = title || '';
+    lb.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function openLightboxById(id) {
+  const item = state.clothes.find(c => c.id === id);
+  if (item) {
+    const label = item.name + (item.brand ? ' (' + item.brand + ')' : '') + ' • ' + item.color;
+    openLightbox(item.imageUrl, label);
+  }
+}
+
+function closeLightbox(e) {
+  if (e) e.stopPropagation();
+  const lb = document.getElementById('image-lightbox');
+  if (lb) {
+    lb.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+}
+
+// ESC tuşu ile kapatma
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeLightbox();
+  }
+});
